@@ -21,6 +21,41 @@
       "value": "不提供收到图片后的定向返修流程。",
       "evidence": "当前会话用户原话：不需要 收到图片后的定向返修。",
       "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "optimization_priorities",
+      "value": "认可优先建立真实案例库、分开评价形式贴近与内容原创、加强文案和画面配合；认可优化方向不等于认可已有作品。",
+      "evidence": "本次会话用户：1 2 3 点认可。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "local_revision_workflow",
+      "value": "不需要新增局部修改工作流。",
+      "evidence": "本次会话用户：5 不需要局部修改。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "image_provider_evaluation",
+      "value": "直接生图优先评估 ddcherry-image；不适配时可以改造以供 content-remix 使用。此偏好不代表已授权付费试生成。",
+      "evidence": "本次会话用户：4 直接生成图片可以看一下 ddcherry-image 这个skill，如果不满足条件，可以改造一下以适应这个skill生成图片。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "approved_visual_baseline",
+      "value": "第三版首张图片/01.png的整体效果获用户认可；本项目后续图片沿用对应人物、底部文字与气泡风格，不继续擅自优化此样张。设定快照为.content-remix/cases/心疼老婆别只说多喝热水/snapshots/after-style-v3.json。",
+      "evidence": "本次会话展示第三版后，用户原话：这一版，我是满意的。",
+      "scope": "project:wechat-posts/20261102-心疼老婆四句话"
+    },
+    {
+      "kind": "explicit",
+      "key": "approved_visual_baseline",
+      "value": "当前风格暂时采用，以本项目创作资料/cards.json与图片/01.png～04.png为基准；第1张获明确满意认可，整组为暂用。过程文件已归档，旧.tmp/generated图片与快照路径不再作为现行引用。",
+      "evidence": "本次会话用户：先暂时用这个图片风格吧。先清理历史文件吧。太多过程文件了。",
+      "scope": "project:wechat-posts/20261102-心疼老婆四句话"
     }
   ]
 }

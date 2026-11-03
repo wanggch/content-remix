@@ -8,6 +8,7 @@ import struct
 import sys
 from pathlib import Path
 
+from project_paths import resolve
 from build_prompt import BATCH_PATH, CONTRACT_PATH, DIMENSIONS, load_project, render_batch, render_contract
 
 REQUIRED = ["00-source/source.md", "01-analysis.md", "02-topics.md", "03-storyboard.md",
@@ -30,7 +31,7 @@ def inspect(root: Path) -> tuple[list[str], list[str], list[str]]:
     warnings: list[str] = []
     info: list[str] = []
     for name in REQUIRED:
-        path = root / name
+        path = resolve(root, name)
         if not path.is_file() or not path.stat().st_size:
             errors.append(f"缺少或为空：{name}")
     data = None
@@ -41,7 +42,7 @@ def inspect(root: Path) -> tuple[list[str], list[str], list[str]]:
     if data:
         for relative, expected in [(BATCH_PATH, render_batch(data)), (CONTRACT_PATH, render_contract(data))]:
             try:
-                actual = (root / relative).read_text(encoding="utf-8")
+                actual = resolve(root, relative).read_text(encoding="utf-8")
                 if actual != expected:
                     errors.append(f"{relative} 与 cards.json 不一致；请重新运行 build_prompt.py")
             except (OSError, UnicodeError) as exc:
@@ -58,12 +59,12 @@ def inspect(root: Path) -> tuple[list[str], list[str], list[str]]:
         cards = data["cards"]
         ratio_w, ratio_h = map(int, data["aspect_ratio"].split(":"))
         expected_ratio = ratio_w / ratio_h
-        generated = sum((root / "generated" / f"{card['index']:02d}.png").is_file() for card in cards)
-        final = sum((root / "final" / f"{card['index']:02d}.png").is_file() for card in cards)
+        generated = sum((resolve(root, "generated") / f"{card['index']:02d}.png").is_file() for card in cards)
+        final = sum((resolve(root, "final") / f"{card['index']:02d}.png").is_file() for card in cards)
         info.append(f"可选生成目录图片：{generated}/{len(cards)}；带字成品图：{final}/{len(cards)}")
         for card in cards:
             for folder in ("generated", "final"):
-                image = root / folder / f"{card['index']:02d}.png"
+                image = resolve(root, folder) / f"{card['index']:02d}.png"
                 if image.is_file():
                     try:
                         width, height = png_dimensions(image)
@@ -74,7 +75,7 @@ def inspect(root: Path) -> tuple[list[str], list[str], list[str]]:
         if final < len(cards):
             warnings.append("最终带字图未全部生成；不可宣称公众号配图成品已完成")
     try:
-        source = json.loads((root / "00-source/source.json").read_text(encoding="utf-8"))
+        source = json.loads(resolve(root, "00-source/source.json").read_text(encoding="utf-8"))
         if not isinstance(source, dict) or source.get("status") != "ok":
             warnings.append("源文素材不完整或需人工图像阅读")
     except (OSError, ValueError):

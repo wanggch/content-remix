@@ -89,7 +89,8 @@ def validate(data: object, *, require_cards: bool = True) -> dict:
 
 
 def load_project(project: Path, *, require_cards: bool = True) -> dict:
-    return validate(json.loads((project / "cards.json").read_text(encoding="utf-8")), require_cards=require_cards)
+    from project_paths import resolve
+    return validate(json.loads(resolve(project, "cards.json").read_text(encoding="utf-8")), require_cards=require_cards)
 
 
 def common_prompt(data: dict) -> str:
@@ -167,7 +168,8 @@ def main() -> int:
         if not args.contract_only:
             outputs[BATCH_PATH] = render_batch(data)
         for relative, text in outputs.items():
-            target = project / relative
+            from project_paths import resolve
+            target = resolve(project, relative)
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(text, encoding="utf-8")
             print(f"已生成：{target}")

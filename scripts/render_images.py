@@ -36,7 +36,8 @@ def main() -> int:
     except (OSError, ValueError, KeyError, json.JSONDecodeError) as exc:
         print("数据错误：" + str(exc), file=sys.stderr)
         return 2
-    target_dir = project / "generated"
+    from project_paths import resolve
+    target_dir = resolve(project, "generated")
     target_dir.mkdir(parents=True, exist_ok=True)
     # 默认跳过已有图片，便于中断后续跑；只有 --overwrite 才重新付费生成。
     todo = [c for c in cards if args.overwrite or not (target_dir / f"{c['index']:02d}.png").exists()]

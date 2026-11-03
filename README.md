@@ -76,9 +76,26 @@ python3 "$SKILL_DIR/scripts/project_memory.py" preference --workspace "$WORKSPAC
 
 仅在有真实证据时记录。字面检索只辅助查重，不证明语义重复；建档不等于用户认可或发布成功。具体规则见 `references/workspace-memory.md`。
 
+## 创作质量与真实案例
+
+- **真实案例**：工作区 `.content-remix/cases/<案例名>/case.md` 记录输入、初稿、用户反馈、修改后版本及认可范围；改写前保存已有版本快照，不补造历史。真实观察、收到反馈、明确认可分别标记，发布不等于认可。细则见 `references/creative-evaluation.md`。
+- **两个独立评价轴**：选题说明“保留什么通用表达机制 / 替换什么内容核心”；形式贴近与内容原创各自评价，不能用原创掩盖形式跑偏，也不能用贴近掩盖只换关键词。
+- **逐图图文配合**：分镜写明具体处境、画面承担的信息、文字补充的信息及删除画面的损失；话术卡允许文字主导，但画面需有情境或情绪作用。不新增JSON字段或局部修改流程。
+- **真实效果验证**：优先比较同输入的首次可用程度、返工轮数与具体问题，未有用户反馈时不宣称质量提升。发布数据另存项目 `06-performance.md`，注明观察时间与缺项，不凭单次阅读量归因。
+
 ## 图片生成与审核
 
 默认无需API Key：复制 `创作提示词.md` 中完整代码块到ChatGPT。模型、界面和额度决定单轮输出数量，不能承诺全部一次完成。图片直接带准确中文文案；下载后核对文字、人物、结构和手机阅读效果，保存为 `final/01.png` 等。其他格式需真实转换，不能只改扩展名。无图时不宣称审核通过，不提供定向修图流程。
+
+选择本机 **DDCherry直接生图** 时，复用 `~/.codex/skills/ddcherry-image/scripts/generate.py`，也可用 `--script` 指定安装位置：
+
+```bash
+python3 "$SKILL_DIR/scripts/render_ddcherry.py" --project "$PROJECT" # 仅预览
+python3 "$SKILL_DIR/scripts/render_ddcherry.py" --project "$PROJECT" --card 1 --yes # 授权后试首张
+python3 "$SKILL_DIR/scripts/render_ddcherry.py" --project "$PROJECT" --yes # 首张审核后生成其余
+```
+
+实际调用需在所用Python环境安装 `Pillow`（`python -m pip install Pillow`），缺依赖会在请求前停止；预览无需该依赖。默认768x1024，与默认3:4一致；其他比例通过 `--size` 指定匹配尺寸。质量默认由服务决定，`--quality` 可覆盖。模型以DDCherry实际配置为准。每次请求一张独立图片，原始输出在 `output/images/`，按卡片编号保存到 `generated/ddcherry/`，`manifest.json` 记录模型、状态、路径、失败原因与待审核状态。成功的同请求图片自动跳过；失败或中断记录需人工核对后处理，不自动重试或覆盖。保留原始输出；映射图片经Pillow解码，将透明区域合成到白底并保存为不透明RGB PNG，防止黑底预览导致黑字不可读。原有不透明区域保持不变，清单记录处理方式及原始透明度范围。不要将生成成功当作审核通过。
 
 如用户明确选择OpenAI付费图像API并配置 `OPENAI_API_KEY`：
 

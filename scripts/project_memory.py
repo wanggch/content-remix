@@ -61,10 +61,13 @@ def effective_preferences(entries: list[dict]) -> list[dict]:
 
 def sync(workspace: Path) -> dict:
     topics = []
-    for path in sorted((workspace / "wechat-posts").glob("*/cards.json")):
-        data = load_project(path.parent)
+    from project_paths import resolve
+    for project in sorted((workspace / "wechat-posts").glob("*")):
+        if not project.is_dir() or not resolve(project, 'cards.json').is_file():
+            continue
+        data = load_project(project)
         topics.append({
-            "project": str(path.parent.relative_to(workspace)), "title": data["title"],
+            "project": str(project.relative_to(workspace)), "title": data["title"],
             "theme": data["theme"], "content_structure": data["content_structure"],
             "scene_tags": data.get("scene_tags", []), "action_tags": data.get("action_tags", []),
             "scenes": [card["scene"] for card in data["cards"]],

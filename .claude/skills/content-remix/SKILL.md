@@ -17,6 +17,18 @@ description: 拆解微信公众号贴图类对标文章并创作原创图文。�
 - 允许保留并列结构、常见人物关系、白底卡通、气泡等通用形式；独立创作话术、例子、人物和动作，避让可识别原句、独特角色、情节和构图。
 - 不发布微信、不绕过平台访问限制、不要求登录 Cookie。提示词检查和实际图片审核分别报告。
 
+## 项目目录约定（优先于下文旧路径示例）
+
+新项目先创建 `创作资料/`，再导入素材；已整理项目按以下路径读写，不重建旧目录。脚本通过 `project_paths.py` 自动兼容新旧项目，下文旧文件名是逻辑用途示例：
+
+- `cards.json` → `创作资料/cards.json`；`01-analysis.md` → `创作资料/对标分析.md`。
+- `02-topics.md`与`03-storyboard.md`合并为`创作资料/选题与分镜.md`，分别维护选题和分镜章节，避免覆盖。
+- `02-创作约束.md` → `创作资料/创作约束.md`。
+- `prompts/创作提示词.md` → 根目录`创作提示词.md`；`04-publish.md` → `发布文案.md`。
+- `00-source/` → `对标素材/`；`final/` → `图片/`。
+- 审核、发布数据、生成清单分别为`记录/审核.md`、`记录/发布数据.md`、`记录/生成记录.json`。
+- 生图临时文件仅写`.tmp/`，采用图片后保留必要清单并更新路径，按用户要求删除过程文件，不归档。旧样图不恢复；认可案例保留反馈摘要及当前图片引用。
+
 ## 一、读取偏好与历史
 
 读取 `references/workspace-memory.md`。在工作区运行：
@@ -25,7 +37,7 @@ description: 拆解微信公众号贴图类对标文章并创作原创图文。�
 python3 "$SKILL_DIR/scripts/project_memory.py" context --workspace "$WORKSPACE" --query '本次主题或候选方向'
 ```
 
-优先执行本次指令，再应用适用范围内的历史明确偏好；推测只作参考。检查相近主题、场景和动作，在 `02-topics.md` 写明哪些候选与历史重复、如何换切入点。检索只有字面匹配能力，必须补充语义判断，不能把分数当原创判定。首次无记录时继续任务，不额外增加确认步骤。
+优先执行本次指令，再应用适用范围内的历史明确偏好；推测只作参考。检查相近主题、场景和动作，在 `02-topics.md` 写明哪些候选与历史重复、如何换切入点。检索只有字面匹配能力，必须补充语义判断，不能把分数当原创判定。首次无记录时继续任务，不额外增加确认步骤。按 `references/creative-evaluation.md` 读取工作区 `.content-remix/cases/` 中与本次任务相关的真实案例；优先参考有明确认可范围的前后对照，观察案例只提供事实，不能当成功范式。
 
 ## 二、导入与检查原文
 
@@ -46,7 +58,7 @@ python3 "$SKILL_DIR/scripts/ingest.py" --text '/path/to/article.md' --out "$PROJ
 
 先识别结构：`parallel` 并列话术卡、`story` 连续故事、`contrast` 前后对照、`tutorial` 步骤教程。未知时明确记录，不凭标题推断。多篇同账号样本再按 `references/style-profile-template.md` 建档；用户自己的偏好不能混作账号规律。
 
-输出 `02-topics.md`：至少5个同赛道不同切口的候选，每个有≤20字标题、读者、具体冲突/场景、核心情绪、区别和图片安排；结合历史选题选出最适合的方案。原文是并列清单时，不擅自换成连续故事；保留解释层级和相近阅读量。未知或不同结构按 `references/chatgpt-prompt-template.md` 路由。
+输出 `02-topics.md`：至少5个同赛道不同切口的候选，每个有≤20字标题、读者、具体冲突/场景、核心情绪、区别和图片安排；结合历史选题选出最适合的方案。原文是并列清单时，不擅自换成连续故事；保留解释层级和相近阅读量。未知或不同结构按 `references/chatgpt-prompt-template.md` 路由。每个候选用一句话说明“保留什么通用表达机制，换掉什么内容核心”，不能只换关键词。选定方案按 `references/analysis-rubric.md` 分别检查形式贴近与内容原创，两项独立记录，不以一个总分互相抵消。
 
 ## 四、先固定创作约束，再写分镜
 
@@ -64,7 +76,7 @@ python3 "$SKILL_DIR/scripts/build_prompt.py" --project "$PROJECT" --contract-onl
 
 按约束填写每张的 `role`、`scene`、`caption`、`alt`；气泡＋解释卡还写 `bubble_text`、`body_text`，caption 必须为两者用换行拼接的完整文字。scene 只写本张动作、镜头、表情、道具与构图，不重复全组设定或嵌入另一份文案。
 
-补充 `scene_tags`、`action_tags`，为后续选题查重提供具体场景与动作。编写 `03-storyboard.md` 说明角色、逐图任务与图文配合；引用准确文案时以 JSON 为准。
+补充 `scene_tags`、`action_tags`，为后续选题查重提供具体场景与动作。编写 `03-storyboard.md` 说明角色、逐图任务与图文配合；引用准确文案时以 JSON 为准。逐图写明具体处境、画面承担的信息、文字补充的信息，以及“删掉画面会损失什么”。动作、表情或道具应服务观点，不只给人物换姿势；话术卡允许文字主导，但需说明画面的情境作用，不为增加视觉信息而删减必要解释。分镜是对 JSON 的说明，不维护第二份文案或场景。
 
 ```bash
 python3 "$SKILL_DIR/scripts/build_prompt.py" --project "$PROJECT"
@@ -87,7 +99,17 @@ python3 "$SKILL_DIR/scripts/project_memory.py" sync --workspace "$WORKSPACE"
 
 图片存入 `final/01.png` 等；只为真实PNG使用 `.png` 扩展名，其他格式需转换。读取 `references/qa-checklist.md`，逐张核对准确文案、手机可读性、人体、人物、物件、图文关系与原创性。问题定位写入审核；任何FAIL均不能称可发布，不提供定向修图工作流。
 
-用户明确选择付费API并已配置密钥时，可选运行：
+用户选择 DDCherry 直接生图时，复用本机 `ddcherry-image` 的配置与模型，不复制配置。从项目JSON逐张编译请求，保留整组提示词交付，不生成逐图提示词文件：
+
+```bash
+python3 "$SKILL_DIR/scripts/render_ddcherry.py" --project "$PROJECT" # 离线预览
+python3 "$SKILL_DIR/scripts/render_ddcherry.py" --project "$PROJECT" --card 1 --yes # 获授权后先试一张
+python3 "$SKILL_DIR/scripts/render_ddcherry.py" --project "$PROJECT" --yes # 审核首张后继续整组
+```
+
+实际调用前在所用Python环境安装 `Pillow`（`python -m pip install Pillow`），缺依赖会在请求前停止；离线预览不需要。默认请求768x1024（3:4），其他比例需显式传 `--size 宽x高` 与JSON一致。`--script` 可指定DDCherry安装脚本；模型以实际脚本为准，不硬编码文档中的型号。原始输出在项目 `output/images/`，映射图片和清单在 `generated/ddcherry/`。同请求已成功保存的图片跳过；失败或未完成请求停止且阻止自动重试，需人工核对清单与服务结果。原始文件不改动，映射输出统一解码并将透明区域合成至不透明白底，保存RGB PNG，避免预览器黑底导致黑字不可读；保留原有不透明背景，不将有色背景强行抹白。清单记录原始透明度范围与处理方式，解码成功不等于画面审核通过。实际查看首图的中文、比例、图文关系，再继续整组并核对人物一致性；未审核不得称可发布。不新增局部修改或定向修图流程。
+
+用户明确选择OpenAI付费API并已配置密钥时，可选运行：
 
 ```bash
 python3 "$SKILL_DIR/scripts/render_images.py" --project "$PROJECT"       # 预览
@@ -100,7 +122,7 @@ API根据同一JSON即时组合请求，图片输出到 `generated/`，经检查
 
 用户明确选择、修改或否定某种做法时，按 `references/workspace-memory.md` 保存带证据与范围的偏好；不要将一次题材选择推断成永久偏好，不把未获认可的作品标成成功样本。
 
-修改本Skill时读取 `references/creative-evaluation.md`，运行离线评估并检查固定案例。脚本只验证结构和交付约定；语感、画风贴近度、原创性由有证据的人工或AI语义审查补充。只有用户明确认可的案例才能标为认可样本。
+修改本Skill时读取 `references/creative-evaluation.md`，运行离线评估并检查固定案例。脚本只验证结构和交付约定；语感、画风贴近度、原创性由有证据的人工或AI语义审查补充。只有用户明确认可的案例才能标为认可样本。有真实作品反馈时，按该参考文件在工作区 `.content-remix/cases/` 保存输入引用、初稿快照、用户反馈、修改后快照及认可范围；缺项写待补，不制造认可或补写不存在的初稿。发布数据单独记录，不能等同于创作质量认可。优先积累3～5组真实案例，不为了凑数量新增用户确认关卡。
 
 ## 回复与资源
 

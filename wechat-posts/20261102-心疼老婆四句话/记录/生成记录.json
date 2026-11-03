@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "cards": {
+    "1": {
+      "fingerprint": "dfe1298d22255af46457a3e1a0e812520056e489da932b6ad5588a56683ed679",
+      "status": ".tmp/generated",
+      "model": "gpt-image-2.5",
+      "size": "768x1024",
+      "review": "user_approved_visual",
+      "path": "图片/01.png",
+      "actual_size": [
+        1086,
+        1448
+      ],
+      "normalization": "white_background_rgb_png",
+      "source_alpha_extrema": [
+        0,
+        255
+      ],
+      "review_report": "记录/审核.md"
+    },
+    "2": {
+      "fingerprint": "10a0ae59f8e20f8adbecc377e385aa4f8624a8695bbedcbd43255539ed151993",
+      "status": ".tmp/generated",
+      "model": "gpt-image-2.5",
+      "size": "768x1024",
+      "review": "reviewed_with_warnings",
+      "path": "图片/02.png",
+      "actual_size": [
+        1086,
+        1448
+      ],
+      "normalization": "white_background_rgb_png",
+      "source_alpha_extrema": [
+        0,
+        255
+      ],
+      "review_report": "记录/审核.md"
+    },
+    "3": {
+      "fingerprint": "ad218c7dd8391201f51c2f9025ece7432f587c6cac5c4793b965446a3f7fec1e",
+      "status": ".tmp/generated",
+      "model": "gpt-image-2.5",
+      "size": "768x1024",
+      "review": "reviewed_with_warnings",
+      "path": "图片/03.png",
+      "actual_size": [
+        1086,
+        1448
+      ],
+      "normalization": "white_background_rgb_png",
+      "source_alpha_extrema": [
+        0,
+        255
+      ],
+      "review_report": "记录/审核.md"
+    },
+    "4": {
+      "fingerprint": "a62f983e4ce3b52f8ac9a68107461c927ba174dfb27790f9de1153c9a595b5e9",
+      "status": ".tmp/generated",
+      "model": "gpt-image-2.5",
+      "size": "768x1024",
+      "review": "reviewed_with_warnings",
+      "path": "图片/04.png",
+      "actual_size": [
+        1086,
+        1448
+      ],
+      "normalization": "white_background_rgb_png",
+      "source_alpha_extrema": [
+        0,
+        255
+      ],
+      "review_report": "记录/审核.md"
+    }
+  }
+}
