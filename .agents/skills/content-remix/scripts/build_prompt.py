@@ -19,8 +19,8 @@ DIMENSIONS = {
     "tone": "语言语感", "visual": "通用视觉",
 }
 PLACEHOLDER = re.compile(r"〔[^〕\n]*〕|\{\{[^}\n]*\}\}|【(?:填写|填入|粘贴|待填)[^】\n]*】")
-BATCH_PATH = Path("prompts/创作提示词.md")
-CONTRACT_PATH = Path("02-创作约束.md")
+BATCH_PATH = Path("创作提示词.md")
+CONTRACT_PATH = Path("创作资料/创作约束.md")
 
 
 def require_text(obj: dict, key: str, location: str) -> str:
@@ -90,7 +90,7 @@ def validate(data: object, *, require_cards: bool = True) -> dict:
 
 def load_project(project: Path, *, require_cards: bool = True) -> dict:
     from project_paths import resolve
-    return validate(json.loads(resolve(project, "cards.json").read_text(encoding="utf-8")), require_cards=require_cards)
+    return validate(json.loads(resolve(project, "创作资料/cards.json").read_text(encoding="utf-8")), require_cards=require_cards)
 
 
 def common_prompt(data: dict) -> str:
@@ -121,6 +121,11 @@ def image_prompt(data: dict, card: dict) -> str:
     return "生成一张独立带字图片，不拼图。\n" + common_prompt(data) + "\n\n" + card_section(card)
 
 
+def batch_prompt(data: dict) -> str:
+    """Same complete batch text for ChatGPT and the one-call renderer."""
+    return render_batch(data).split('```text\n', 1)[1].split('\n```', 1)[0]
+
+
 def render_batch(data: dict) -> str:
     count = len(data["cards"])
     sections = "\n".join(card_section(card) for card in data["cards"])
@@ -129,18 +134,15 @@ def render_batch(data: dict) -> str:
         "复制下方整个代码块到支持图片生成的 ChatGPT 对话。所有创作设定均在此文件中；无需读取本地文件。"
         "多图输出受模型、界面和额度影响，实际图片仍需核对文字、人物及手机可读性。\n\n"
         "```text\n"
-        f"请使用图片生成能力，生成 {count} 张独立带字图片，按 01—{count:02d} 分别输出。"
+        f"请一次生成整组 {count} 张独立带字图片，按 01—{count:02d} 顺序输出，不逐张请求确认。"
         "不是一张四宫格、拼贴或联系表。尽可能完成全部图片；数量不足时说明已完成序号，不用文字描述冒充图片。\n\n"
         "【全组设定】\n" + common_prompt(data) + "\n\n" + sections +
         "\n【质量要求】\n每张只表达一个主要观点或动作；按所选结构组织图片。"
         "检查五官、手指、人体结构、透视、物件数量和文字错漏；画面与文字互补。"
         "使用独立创作的角色、情节和构图，不照搬对标作品的独特表达。\n```\n\n"
-        "## 缺图续生成\n\n"
-        "在同一对话中说明缺失序号，并从上方复制相应图片的完整分镜与准确文字，"
-        "要求沿用全组设定，仅补齐缺图，每张独立输出。\n\n"
-        "## 误生成拼图\n\n"
-        "要求按上方分镜逐张重新生成独立图片文件，不能将拼图计作多张成品。\n\n"
-        "换新对话时同时复制完整全组设定和所需分镜；需要参考图时实际上传有权使用的图片。\n"
+        "## 整组结果检查\n\n"
+        "数量不足、拼图或缺失文案均报告未完成，不自动逐张补图、不拆拼图冒充独立生成、不自动重试。"
+        "整组核对数量、顺序、文案与人物；程序通过不代表视觉审核通过。\n"
     )
 
 

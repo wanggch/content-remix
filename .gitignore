@@ -27,5 +27,8 @@ Thumbs.db
 *.swo
 *~
 
+# Generated intermediate images (not deliverables)
+wechat-posts/*/.tmp/
+
 # Logs
 *.log

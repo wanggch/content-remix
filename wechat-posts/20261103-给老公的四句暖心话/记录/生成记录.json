@@ -1,0 +1,31 @@
+{
+  "schema_version": 2,
+  "mode": "single_request_batch",
+  "expected_count": 4,
+  "status": "incomplete",
+  "model": "gpt-image-2.5",
+  "review": "blocked_collage",
+  "capability": "n4_returned_single_collage",
+  "requested_n": 4,
+  "files": [
+    {
+      "response_index": 1,
+      "card_index": null,
+      "path": ".tmp/generated/01.png",
+      "actual_size": [
+        1086,
+        1448
+      ],
+      "normalization": "white_background_rgb_png",
+      "source_alpha_extrema": [
+        0,
+        255
+      ]
+    }
+  ],
+  "actual_count": 1,
+  "source_paths": [
+    "/Users/qianjian/wgc/06-workspace/02-ddcherry-dream/01-code/content-remix/wechat-posts/20261103-给老公的四句暖心话/.tmp/output/images/20261103-014657-328002-001.png"
+  ],
+  "blocker": "显式n=4仍返回1张四宫格，未满足独立多图要求"
+}

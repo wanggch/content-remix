@@ -5,7 +5,7 @@
 数据存于用户工作区的 `.content-remix/`，不放进安装的Skill目录，不跨工作区读取个人偏好。优先级为：本次用户指令 → 同范围最新explicit明确偏好 → inferred推测。保留原记录和证据，不把推测升级为明确要求。
 
 - `preferences.json`：版本1，entries数组；每项含kind、key、value、evidence、scope。
-- `topic-history.json`：从当前 `wechat-posts/*/cards.json` 重建的选题索引，含主题、结构、具体场景、动作与项目路径。
+- `topic-history.json`：从当前 `wechat-posts/*/创作资料/cards.json` 重建的选题索引，含主题、结构、具体场景、动作与项目路径。
 - 索引只说明策划曾存在，不等于用户认可、成功发布或运营效果好。删除项目后重新sync会清除对应索引，不复活失败作品。
 
 ## 创作前读取
@@ -16,7 +16,7 @@ python3 "$SKILL_DIR/scripts/project_memory.py" context --workspace "$WORKSPACE" 
 
 继续已有项目时，可加 `--exclude-project 'wechat-posts/日期-主题'` 排除自身。查询输出按字面重合数量排列，最多10项；无匹配也会返回部分历史供检查。记录多时对不同候选分别查询，不能将字面检索当完整语义去重。
 
-在 `02-topics.md` 附简短历史检查：相近项目、重合主题/场景/动作、新切入点与选题理由。不同标题但相同观点、动作也可能重复；同场景处理不同读者难题则可成立，应说明区别。
+在 `创作资料/选题与分镜.md` 附简短历史检查：相近项目、重合主题/场景/动作、新切入点与选题理由。不同标题但相同观点、动作也可能重复；同场景处理不同读者难题则可成立，应说明区别。
 
 ## 记录偏好
 

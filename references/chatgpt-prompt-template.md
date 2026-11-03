@@ -1,6 +1,6 @@
 # 四种结构的提示词规则
 
-先在 `cards.json` 选择 `content_structure`；脚本按结构添加对应组织规则，生成唯一的 `prompts/创作提示词.md`。完整数据格式见 `cards-schema.md`，不要再手工维护另一份模板成品。
+先在 `创作资料/cards.json` 选择 `content_structure`；脚本按结构添加对应组织规则，生成唯一的 `创作提示词.md`。完整数据格式见 `cards-schema.md`，不要再手工维护另一份模板成品。
 
 | 类型 | 适用内容 | 分镜要求 | 场景连续性 |
 |---|---|---|---|

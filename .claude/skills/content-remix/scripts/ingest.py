@@ -200,11 +200,11 @@ def main() -> int:
         ap.error("--max-images 必须在 0..100 范围")
 
     root = Path(args.out).expanduser().resolve()
-    from project_paths import resolve, organized
-    source_dir = resolve(root, "00-source")
+    from project_paths import resolve
+    source_dir = resolve(root, "对标素材")
     (source_dir / "images").mkdir(parents=True, exist_ok=True)
     (source_dir / "screenshots").mkdir(parents=True, exist_ok=True)
-    for name in (["创作资料", "记录", "图片"] if organized(root) else ["prompts", "generated", "final"]):
+    for name in ["创作资料", "记录", "图片"]:
         (root / name).mkdir(exist_ok=True)
 
     warnings: list[str] = []

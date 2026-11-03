@@ -11,8 +11,8 @@ from pathlib import Path
 from project_paths import resolve
 from build_prompt import BATCH_PATH, CONTRACT_PATH, DIMENSIONS, load_project, render_batch, render_contract
 
-REQUIRED = ["00-source/source.md", "01-analysis.md", "02-topics.md", "03-storyboard.md",
-            "04-publish.md", "05-review.md", "cards.json", str(CONTRACT_PATH), str(BATCH_PATH)]
+REQUIRED = ["对标素材/source.md", "创作资料/对标分析.md", "创作资料/选题与分镜.md", "创作资料/选题与分镜.md",
+            "发布文案.md", "记录/审核.md", "创作资料/cards.json", str(CONTRACT_PATH), str(BATCH_PATH)]
 
 
 def png_dimensions(path: Path) -> tuple[int, int]:
@@ -59,27 +59,27 @@ def inspect(root: Path) -> tuple[list[str], list[str], list[str]]:
         cards = data["cards"]
         ratio_w, ratio_h = map(int, data["aspect_ratio"].split(":"))
         expected_ratio = ratio_w / ratio_h
-        generated = sum((resolve(root, "generated") / f"{card['index']:02d}.png").is_file() for card in cards)
-        final = sum((resolve(root, "final") / f"{card['index']:02d}.png").is_file() for card in cards)
+        generated = sum((resolve(root, ".tmp/generated") / f"{card['index']:02d}.png").is_file() for card in cards)
+        final = sum((resolve(root, "图片") / f"{card['index']:02d}.png").is_file() for card in cards)
         info.append(f"可选生成目录图片：{generated}/{len(cards)}；带字成品图：{final}/{len(cards)}")
         for card in cards:
-            for folder in ("generated", "final"):
+            for folder in (".tmp/generated", "图片"):
                 image = resolve(root, folder) / f"{card['index']:02d}.png"
                 if image.is_file():
                     try:
                         width, height = png_dimensions(image)
-                        if folder == "final" and abs(width / height - expected_ratio) > 0.015:
+                        if folder == "图片" and abs(width / height - expected_ratio) > 0.015:
                             warnings.append(f"{folder}/{image.name} 宽高比偏离 {data['aspect_ratio']}（{width}x{height}）")
                     except (OSError, ValueError) as exc:
                         errors.append(f"{folder}/{image.name} 文件无效：{exc}")
         if final < len(cards):
             warnings.append("最终带字图未全部生成；不可宣称公众号配图成品已完成")
     try:
-        source = json.loads(resolve(root, "00-source/source.json").read_text(encoding="utf-8"))
+        source = json.loads(resolve(root, "对标素材/source.json").read_text(encoding="utf-8"))
         if not isinstance(source, dict) or source.get("status") != "ok":
             warnings.append("源文素材不完整或需人工图像阅读")
     except (OSError, ValueError):
-        warnings.append("缺少有效的 00-source/source.json；来源完整性尚未核实")
+        warnings.append("缺少有效的 对标素材/source.json；来源完整性尚未核实")
     info.append("结构校验不包含审美、生活语感、事实性、视觉畸形与原创人工审核")
     return errors, warnings, info
 

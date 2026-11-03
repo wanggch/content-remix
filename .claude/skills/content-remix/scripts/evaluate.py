@@ -40,8 +40,9 @@ def evaluate(catalog: Path) -> tuple[str, int]:
             data = case_data(source["base"], case)
             with tempfile.TemporaryDirectory() as temporary:
                 project = Path(temporary)
+                (project / '创作资料').mkdir()
                 original = json.dumps(data, ensure_ascii=False, indent=2) + "\n"
-                (project / "cards.json").write_text(original, encoding="utf-8")
+                (project / "创作资料/cards.json").write_text(original, encoding="utf-8")
                 run = subprocess.run([sys.executable, str(SKILL_ROOT / "scripts/build_prompt.py"), "--project", str(project)], capture_output=True, text=True)
                 if run.returncode:
                     raise ValueError(run.stderr.strip() or "生成命令失败")
@@ -58,7 +59,7 @@ def evaluate(catalog: Path) -> tuple[str, int]:
                 delivered = {path.relative_to(project) for path in project.rglob("*.md")}
                 if delivered != {BATCH_PATH, CONTRACT_PATH}:
                     errors.append("交付文件不符合单份整组提示词约定")
-                if (project / "cards.json").read_text(encoding="utf-8") != original:
+                if (project / "创作资料/cards.json").read_text(encoding="utf-8") != original:
                     errors.append("生成脚本改写了创作数据")
         except (OSError, ValueError, KeyError, TypeError) as exc:
             errors.append(str(exc))

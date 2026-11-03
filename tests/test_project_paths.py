@@ -13,14 +13,14 @@ class OrganizedProjectTest(unittest.TestCase):
             project = workspace / 'wechat-posts/example'
             (project / '创作资料').mkdir(parents=True)
             data = sample_data()
-            resolve(project, 'cards.json').write_text(json.dumps(data, ensure_ascii=False))
-            for name in ['00-source/source.md', '01-analysis.md', '02-topics.md', '04-publish.md', '05-review.md']:
+            resolve(project, '创作资料/cards.json').write_text(json.dumps(data, ensure_ascii=False))
+            for name in ['对标素材/source.md', '创作资料/对标分析.md', '创作资料/选题与分镜.md', '发布文案.md', '记录/审核.md']:
                 path = resolve(project, name)
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text('测试内容')
-            resolve(project, '00-source/source.json').write_text('{"status":"ok"}')
+            resolve(project, '对标素材/source.json').write_text('{"status":"ok"}')
             for card in data['cards']:
-                write_png(resolve(project, 'final') / f'{card["index"]:02d}.png')
+                write_png(resolve(project, '图片') / f'{card["index"]:02d}.png')
             result = cli('build_prompt', '--project', project)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue((project / '创作提示词.md').is_file())

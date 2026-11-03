@@ -37,8 +37,8 @@ def sample_data(structure: str = "parallel") -> dict:
 
 
 def write_data(project: Path, data: dict) -> None:
-    project.mkdir(parents=True, exist_ok=True)
-    (project / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    (project / '创作资料').mkdir(parents=True, exist_ok=True)
+    (project / "创作资料/cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
 def cli(name: str, *args: object, **kwargs) -> subprocess.CompletedProcess:
@@ -47,11 +47,11 @@ def cli(name: str, *args: object, **kwargs) -> subprocess.CompletedProcess:
 
 def complete_project(project: Path, data: dict) -> None:
     write_data(project, data)
-    for name in ["00-source/source.md", "01-analysis.md", "02-topics.md", "03-storyboard.md", "04-publish.md", "05-review.md"]:
+    for name in ["对标素材/source.md", "创作资料/对标分析.md", "创作资料/选题与分镜.md", "创作资料/选题与分镜.md", "发布文案.md", "记录/审核.md"]:
         path = project / name
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("离线测试文档", encoding="utf-8")
-    (project / "00-source/source.json").write_text('{"status": "ok"}', encoding="utf-8")
+    (project / "对标素材/source.json").write_text('{"status": "ok"}', encoding="utf-8")
     result = cli("build_prompt", "--project", project)
     if result.returncode:
         raise AssertionError(result.stderr)
@@ -95,9 +95,9 @@ class SkillTest(unittest.TestCase):
             with patch.object(mod, "get_url_content", return_value=(image.read_bytes(), "image/png")), \
                  patch.object(sys, "argv", ["ingest.py", "--html", str(source), "--out", str(root / "case")]):
                 self.assertEqual(mod.main(), 0)
-            doc = (root / "case/00-source/source.md").read_text(encoding="utf-8")
+            doc = (root / "case/对标素材/source.md").read_text(encoding="utf-8")
             self.assertTrue(doc.index("第一段") < doc.index("images/01.png") < doc.index("第二段"))
-            data = json.loads((root / "case/00-source/source.json").read_text(encoding="utf-8"))
+            data = json.loads((root / "case/对标素材/source.json").read_text(encoding="utf-8"))
             self.assertEqual(data["status"], "ok")
             self.assertEqual(data["title"], "原创素材")
 
@@ -108,36 +108,34 @@ class SkillTest(unittest.TestCase):
             write_png(shot)
             result = cli("ingest", "--screenshots", shot, "--out", root / "case")
             self.assertEqual(result.returncode, 0, result.stderr)
-            data = json.loads((root / "case/00-source/source.json").read_text(encoding="utf-8"))
+            data = json.loads((root / "case/对标素材/source.json").read_text(encoding="utf-8"))
             self.assertEqual(data["status"], "partial")
-            self.assertTrue((root / "case/00-source/screenshots/01.png").exists())
+            self.assertTrue((root / "case/对标素材/screenshots/01.png").exists())
 
     def test_render_dry_run_never_needs_key(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             data = sample_data()
             write_data(root, data)
-            result = cli("render_images", "--project", root, env={})
+            result = cli("render_ddcherry", "--project", root, env={})
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("未调用 API", result.stdout)
-            self.assertFalse(any((root / "generated").iterdir()))
-            cards = load_script("render_images").load_cards(root)
-            for source, compiled in zip(data["cards"], cards):
-                self.assertIn(source["caption"], compiled["image_prompt"])
-                self.assertIn(source["scene"], compiled["image_prompt"])
-            self.assertFalse((root / "prompts").exists())
+            self.assertIn("仅预览", result.stdout)
+            self.assertFalse((root / '.tmp').exists())
+            disabled = cli('render_images', '--project', root)
+            self.assertEqual(disabled.returncode, 2)
+            self.assertIn('已停用', disabled.stderr)
 
     def test_single_batch_preserves_full_text_and_is_deterministic(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             data = sample_data()
             write_data(root, data)
-            original = (root / "cards.json").read_bytes()
+            original = (root / "创作资料/cards.json").read_bytes()
             result = cli("build_prompt", "--project", root)
             self.assertEqual(result.returncode, 0, result.stderr)
-            batch = root / "prompts/创作提示词.md"
+            batch = root / "创作提示词.md"
             content = batch.read_text(encoding="utf-8")
-            self.assertEqual([path.name for path in batch.parent.iterdir()], ["创作提示词.md"])
+            self.assertEqual([path.name for path in batch.parent.glob('*.md')], ["创作提示词.md"])
             for card in data["cards"]:
                 self.assertIn(card["caption"], content)
                 self.assertIn(card["scene"], content)
@@ -145,7 +143,7 @@ class SkillTest(unittest.TestCase):
             self.assertNotIn("结尾回应开场", content)
             self.assertEqual(cli("build_prompt", "--project", root).returncode, 0)
             self.assertEqual(batch.read_text(encoding="utf-8"), content)
-            self.assertEqual((root / "cards.json").read_bytes(), original)
+            self.assertEqual((root / "创作资料/cards.json").read_bytes(), original)
 
     def test_contract_can_precede_storyboard(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -155,8 +153,8 @@ class SkillTest(unittest.TestCase):
             write_data(root, data)
             result = cli("build_prompt", "--project", root, "--contract-only")
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertTrue((root / "02-创作约束.md").is_file())
-            self.assertFalse((root / "prompts/创作提示词.md").exists())
+            self.assertTrue((root / "创作资料/创作约束.md").is_file())
+            self.assertFalse((root / "创作提示词.md").exists())
             self.assertEqual(cli("build_prompt", "--project", root).returncode, 2)
 
     def test_incomplete_explanation_and_placeholders_are_rejected(self):
@@ -218,10 +216,10 @@ class SkillTest(unittest.TestCase):
             write_data(root, data)
             errors, _, _ = mod.inspect(root)
             self.assertTrue(any("创作提示词.md 与" in error for error in errors))
-            self.assertTrue(any("02-创作约束.md 与" in error for error in errors))
+            self.assertTrue(any("创作资料/创作约束.md 与" in error for error in errors))
             self.assertEqual(cli("build_prompt", "--project", root).returncode, 0)
             self.assertEqual(mod.inspect(root)[0], [])
-            batch = root / "prompts/创作提示词.md"
+            batch = root / "创作提示词.md"
             batch.write_text(batch.read_text(encoding="utf-8").replace(data["cards"][0]["caption"], "漏掉解释"), encoding="utf-8")
             self.assertTrue(any("创作提示词.md 与" in error for error in mod.inspect(root)[0]))
 
@@ -230,7 +228,7 @@ class SkillTest(unittest.TestCase):
             root = Path(tmp)
             data = sample_data()
             complete_project(root, data)
-            batch = root / "prompts/创作提示词.md"
+            batch = root / "创作提示词.md"
             original = batch.read_bytes()
             data["cards"][0]["caption"] = "遗漏底文"
             write_data(root, data)
@@ -247,11 +245,11 @@ class SkillTest(unittest.TestCase):
             complete_project(root, data)
             self.assertTrue(any("最终带字图未全部生成" in warning for warning in mod.inspect(root)[1]))
             for index in range(1, 4):
-                write_png(root / "final" / f"{index:02d}.png", 16, 9)
+                write_png(root / "图片" / f"{index:02d}.png", 16, 9)
             result = cli("quality_check", "--project", root)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("FAIL=0 WARN=0", result.stdout)
-            (root / "final/01.png").write_text("不是PNG", encoding="utf-8")
+            (root / "图片/01.png").write_text("不是PNG", encoding="utf-8")
             self.assertTrue(any("文件无效" in error for error in mod.inspect(root)[0]))
 
     def test_preference_priority_evidence_and_scope(self):
@@ -290,12 +288,12 @@ class SkillTest(unittest.TestCase):
             result = mod.context(root, "饭盒分装")
             self.assertEqual(result["topics"][0]["project"], "wechat-posts/b")
             self.assertEqual(len(mod.context(root, exclude_project="wechat-posts/a")["topics"]), 1)
-            (a / "cards.json").unlink()
+            (a / "创作资料/cards.json").unlink()
             self.assertEqual(len(mod.sync(root)["topics"]), 1)
             self.assertEqual(preference_path.read_bytes(), original)
             history_path = root / ".content-remix/topic-history.json"
             old_history = history_path.read_bytes()
-            (b / "cards.json").write_text("{}", encoding="utf-8")
+            (b / "创作资料/cards.json").write_text("{}", encoding="utf-8")
             with self.assertRaises(ValueError):
                 mod.sync(root)
             self.assertEqual(history_path.read_bytes(), old_history)
@@ -331,7 +329,7 @@ class SkillTest(unittest.TestCase):
             for script, args in [("build_prompt", ["--project", str(data_project)]), ("evaluate", [])]:
                 result = subprocess.run([sys.executable, str(installed / "scripts" / f"{script}.py"), *args], cwd=workspace, capture_output=True, text=True)
                 self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
-            self.assertEqual(len(list((data_project / "prompts").iterdir())), 1)
+            self.assertTrue((data_project / '创作提示词.md').is_file())
 
 
 if __name__ == "__main__":

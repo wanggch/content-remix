@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-"""Render cards through the locally installed DDCherry skill; dry-run by default."""
+"""One batch prompt, one provider call, no per-card fallback or automatic retry."""
 from __future__ import annotations
 import argparse
-import hashlib
 import importlib.util
+import inspect
 import json
 import os
 import re
-import struct
 import sys
 from pathlib import Path
-from build_prompt import image_prompt, load_project
+from build_prompt import load_project, batch_prompt
+from project_paths import MANIFEST, TEMP
 
 DEFAULT_SCRIPT = Path.home() / '.codex/skills/ddcherry-image/scripts/generate.py'
 
@@ -18,45 +18,30 @@ DEFAULT_SCRIPT = Path.home() / '.codex/skills/ddcherry-image/scripts/generate.py
 def load_provider(path):
     spec = importlib.util.spec_from_file_location('content_remix_ddcherry', path)
     if spec is None or spec.loader is None:
-        raise ValueError('无法加载 DDCherry 脚本')
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-def inspect_image(raw):
-    if len(raw) >= 33 and raw.startswith(b'\x89PNG\r\n\x1a\n') and raw[12:16] == b'IHDR':
-        width, height = struct.unpack('>II', raw[16:24])
-        if not width or not height:
-            raise ValueError('PNG 尺寸无效')
-        return '.png', width, height
-    # Other formats are retained honestly, but must be visually checked/converted before final/.
-    if raw.startswith(b'\xff\xd8\xff'):
-        return '.jpg', None, None
-    if raw.startswith(b'RIFF') and raw[8:12] == b'WEBP':
-        return '.webp', None, None
-    raise ValueError('返回文件不是可识别的 PNG/JPEG/WebP')
+        raise ValueError('无法加载DDCherry脚本')
+    provider = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(provider)
+    return provider
 
 
 def normalize_image(source, destination):
-    """Decode, flatten transparency onto white, and save a real RGB PNG."""
     from PIL import Image
     with Image.open(source) as image:
         image.load()
         rgba = image.convert('RGBA')
-        alpha_min, alpha_max = rgba.getchannel('A').getextrema()
-        background = Image.new('RGBA', rgba.size, (255, 255, 255, 255))
-        output = Image.alpha_composite(background, rgba).convert('RGB')
+        extrema = rgba.getchannel('A').getextrema()
+        output = Image.alpha_composite(Image.new('RGBA', rgba.size, 'white'), rgba).convert('RGB')
         temp = destination.with_suffix('.tmp')
         output.save(temp, format='PNG')
         temp.replace(destination)
         return {'actual_size': list(output.size), 'normalization': 'white_background_rgb_png',
-                'source_alpha_extrema': [alpha_min, alpha_max]}
+                'source_alpha_extrema': list(extrema)}
 
 
-def save_manifest(path, manifest):
+def save_manifest(path, data):
+    path.parent.mkdir(parents=True, exist_ok=True)
     temp = path.with_suffix('.tmp')
-    temp.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    temp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
     temp.replace(path)
 
 
@@ -66,87 +51,70 @@ def main(argv=None):
     parser.add_argument('--script', type=Path, default=DEFAULT_SCRIPT)
     parser.add_argument('--size', default='768x1024')
     parser.add_argument('--quality', choices=['auto', 'low', 'medium', 'high'])
-    parser.add_argument('--run', default='ddcherry', help='独立生成批次名，保留旧版结果')
-    parser.add_argument('--card', type=int, help='只生成指定卡片，适合先试一张')
-    parser.add_argument('--yes', action='store_true', help='授权实际调用；默认仅预览')
+    parser.add_argument('--yes', action='store_true')
     args = parser.parse_args(argv)
     project = args.project.expanduser().resolve()
     try:
-        if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_-]{0,63}', args.run):
-            raise ValueError('批次名仅允许字母、数字、下划线与连字符')
         data = load_project(project)
+        prompt = batch_prompt(data)
         match = re.fullmatch(r'([1-9]\d*)x([1-9]\d*)', args.size)
         if not match:
-            raise ValueError('size 必须是正整数宽x高')
-        width, height = map(int, match.groups())
+            raise ValueError('size必须为宽x高')
+        w, h = map(int, match.groups())
         rw, rh = map(int, data['aspect_ratio'].split(':'))
-        if width * rh != height * rw:
-            raise ValueError('请求尺寸与 cards.json 的 aspect_ratio 不一致')
-        cards = [c for c in data['cards'] if args.card is None or c['index'] == args.card]
-        if not cards:
-            raise ValueError('未找到指定卡片')
-        jobs = [(c['index'], image_prompt(data, c) + '\n本次只输出这一张独立图片，不要拼图、联系表或额外图片。') for c in cards]
-        print(f'提供方：DDCherry；尺寸：{args.size}；选中：{len(jobs)} 张')
+        if w * rh != h * rw:
+            raise ValueError('尺寸与创作比例不一致')
+        expected = len(data['cards'])
+        print(f'整组单次请求；计划{expected}张独立图片；提示词{len(prompt)}字符。')
         if not args.yes:
-            for index, prompt in jobs:
-                print(f'卡片 {index:02d}；提示词 {len(prompt)} 字符')
-            print('预览完成，未加载服务配置、未调用接口。实际调用添加 --yes。')
+            print('仅预览。DDCherry单次返回多图能力待实测，不自动逐张回退。')
             return 0
-        try:
-            import PIL.Image  # Preflight before any API request.
-        except ImportError:
-            raise ValueError('直接生图需 Pillow：请在所用Python环境执行 python -m pip install Pillow')
-        from project_paths import resolve, organized
-        target = resolve(project, 'generated') / args.run
-        target.mkdir(parents=True, exist_ok=True)
-        manifest_path = (project / '记录/生成记录.json') if organized(project) else target / 'manifest.json'
-        manifest_path.parent.mkdir(parents=True, exist_ok=True)
-        manifest = json.loads(manifest_path.read_text()) if manifest_path.exists() else {'schema_version': 1, 'cards': {}}
+        from PIL import Image  # Dependency check before loading provider or requesting.
+        manifest_path = project / MANIFEST
+        if manifest_path.exists() or any((project / '图片').glob('*.png')):
+            raise ValueError('已有生成记录或成品，停止以避免重复调用；请先人工核对')
         provider = load_provider(args.script.expanduser().resolve())
-        for index, prompt in jobs:
-            fingerprint = hashlib.sha256(json.dumps([prompt, args.size, args.quality, provider.MODEL], ensure_ascii=False).encode()).hexdigest()
-            key = str(index)
-            old = manifest['cards'].get(key)
-            if old:
-                if str(old.get('review', '')).startswith('fail'):
-                    raise ValueError(f'卡片 {index} 审核失败，停止整组生成；先查看审核报告')
-                if old.get('status') == 'generated' and old.get('fingerprint') == fingerprint and (project / old['path']).is_file():
-                    print(f'跳过已有卡片 {index:02d}：{old["path"]}')
-                    continue
-                raise ValueError(f'卡片 {index} 有旧记录或未完成请求；请先人工核对，避免重复生成或覆盖')
-            entry = {'fingerprint': fingerprint, 'status': 'requesting', 'model': provider.MODEL, 'size': args.size, 'review': 'pending'}
-            manifest['cards'][key] = entry
-            save_manifest(manifest_path, manifest)
+        parameters = inspect.signature(provider.generate).parameters
+        if 'n' not in parameters and not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in parameters.values()):
+            raise ValueError('DDCherry脚本未支持显式数量n，请先更新适配；不发送可能默认为单图的请求')
+        target = project / TEMP
+        if target.exists() and any(target.iterdir()):
+            raise ValueError('存在待处理的临时图片，请先人工核对')
+        target.mkdir(parents=True, exist_ok=True)
+        manifest = {'schema_version': 2, 'mode': 'single_request_batch', 'expected_count': expected,
+                    'status': 'requesting', 'model': provider.MODEL, 'review': 'pending',
+                    'capability': 'unverified', 'requested_n': expected, 'files': []}
+        save_manifest(manifest_path, manifest)
+        try:
+            previous = Path.cwd()
             try:
-                previous = Path.cwd()
-                try:
-                    os.chdir(project)
-                    output_root = project / '.tmp' if organized(project) else project
-                    model, paths = provider.generate(output_root, prompt, args.size, args.quality)
-                finally:
-                    os.chdir(previous)
-                entry['source_paths'] = [str(p) for p in paths]
-                if len(paths) != 1:
-                    raise ValueError('接口未返回恰好一张图片，原始结果保留待人工核对')
-                destination = target / f'{index:02d}.png'
-                if destination.exists():
-                    raise ValueError('目标图片已存在，停止以避免覆盖')
-                normalized = normalize_image(Path(paths[0]), destination)
-                actual_w, actual_h = normalized['actual_size']
-                entry.update(model=model, path=str(destination.relative_to(project)), **normalized)
-                if actual_w and actual_w * rh != actual_h * rw:
-                    raise ValueError('实际图片比例不符，图片已保留待检查')
-                entry['status'] = 'generated'
+                os.chdir(project)
+                model, paths = provider.generate(project / '.tmp', prompt, args.size, args.quality, n=expected)
+            finally:
+                os.chdir(previous)
+            manifest.update(model=model, actual_count=len(paths), source_paths=[str(p) for p in paths])
+            for i, source in enumerate(paths, 1):
+                destination = target / f'{i:02d}.png'
+                info = normalize_image(Path(source), destination)
+                manifest['files'].append({'response_index': i, 'card_index': None,
+                                          'path': str(destination.relative_to(project)), **info})
                 save_manifest(manifest_path, manifest)
-                print(f'已生成（待审核）：{destination}；模型：{model}')
-            except Exception as exc:
-                reason = str(exc) if isinstance(exc, ValueError) or type(exc).__name__ == 'GenerationError' else type(exc).__name__
-                entry.update(status='failed', error_type=type(exc).__name__, error=reason)
-                save_manifest(manifest_path, manifest)
-                print(f'卡片 {index} 失败：{reason}；已停止，不自动重试。', file=sys.stderr)
-                return 1
-        return 0
-    except (OSError, ValueError, KeyError, TypeError) as exc:
+            if len(paths) != expected:
+                manifest.update(status='incomplete', blocker='返回图片数量与计划不一致；不自动补图或拆拼图')
+            elif any(f['actual_size'][0] * rh != f['actual_size'][1] * rw for f in manifest['files']):
+                manifest.update(status='blocked', blocker='返回图片比例不一致')
+            else:
+                manifest.update(status='generated_pending_review', capability='count_observed_only')
+            save_manifest(manifest_path, manifest)
+            print(f'实际返回{len(paths)}张；{manifest["status"]}。需看图确认独立图片、顺序、文案与拼图问题。')
+            return 0 if manifest['status'] == 'generated_pending_review' else 1
+        except Exception as exc:
+            reason = str(exc) if isinstance(exc, ValueError) or type(exc).__name__ == 'GenerationError' else type(exc).__name__
+            manifest.update(status='failed', blocker=reason)
+            save_manifest(manifest_path, manifest)
+            print(f'整组请求失败：{reason}；不重试、不逐张回退。', file=sys.stderr)
+            return 1
+    except (OSError, ValueError, KeyError, TypeError, ImportError) as exc:
         print(f'准备失败：{exc}', file=sys.stderr)
         return 2
 

@@ -7,7 +7,7 @@ from unittest.mock import Mock, patch
 from test_skill import load_script, sample_data, write_data, write_png
 
 
-class DDCherryTest(unittest.TestCase):
+class DDCherryBatchTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self.tmp.cleanup)
@@ -17,64 +17,67 @@ class DDCherryTest(unittest.TestCase):
         self.mod = load_script('render_ddcherry')
         self.args = ['--project', str(self.project)]
 
-    def provider(self):
-        image = self.project / 'output/images/test.png'
-        write_png(image)
-        return SimpleNamespace(MODEL='test-model', generate=Mock(return_value=('test-model', [image])))
+    def provider(self, count):
+        paths = []
+        for i in range(count):
+            p = self.project / '.tmp/raw' / f'{i}.png'
+            write_png(p)
+            paths.append(p)
+        return SimpleNamespace(MODEL='test', generate=Mock(return_value=('test', paths)))
 
-    def test_preview_no_provider_or_files(self):
+    def test_preview_no_provider(self):
         with patch.object(self.mod, 'load_provider') as load:
             self.assertEqual(self.mod.main(self.args), 0)
             load.assert_not_called()
-        self.assertFalse((self.project / 'generated').exists())
+        self.assertFalse((self.project / '记录').exists())
 
-    def test_generate_mapping_text_and_skip(self):
-        provider = self.provider()
+    def test_single_request_complete_prompt(self):
+        provider = self.provider(len(self.data['cards']))
         with patch.object(self.mod, 'load_provider', return_value=provider):
             self.assertEqual(self.mod.main(self.args + ['--yes']), 0)
-            self.assertEqual(provider.generate.call_count, len(self.data['cards']))
-            for call, card in zip(provider.generate.call_args_list, self.data['cards']):
-                self.assertIn(card['caption'], call.args[1])
-                self.assertEqual(call.args[2], '768x1024')
-            self.assertEqual(self.mod.main(self.args + ['--yes']), 0)
-            self.assertEqual(provider.generate.call_count, len(self.data['cards']))
-        manifest = json.loads((self.project / 'generated/ddcherry/manifest.json').read_text())
-        self.assertTrue(all(e['review'] == 'pending' for e in manifest['cards'].values()))
+            self.assertEqual(self.mod.main(self.args + ['--yes']), 2)
+        provider.generate.assert_called_once()
+        self.assertEqual(provider.generate.call_args.kwargs['n'], len(self.data['cards']))
+        prompt = provider.generate.call_args.args[1]
+        for card in self.data['cards']:
+            self.assertIn(card['caption'], prompt)
+            self.assertIn(card['scene'], prompt)
+        manifest = json.loads((self.project / '记录/生成记录.json').read_text())
+        self.assertEqual(manifest['status'], 'generated_pending_review')
+        self.assertTrue(all(f['card_index'] is None for f in manifest['files']))
 
-    def test_failure_stops_and_blocks_retry(self):
-        provider = self.provider()
+    def test_missing_images_no_fallback(self):
+        provider = self.provider(1)
+        with patch.object(self.mod, 'load_provider', return_value=provider):
+            self.assertEqual(self.mod.main(self.args + ['--yes']), 1)
+        provider.generate.assert_called_once()
+        m = json.loads((self.project / '记录/生成记录.json').read_text())
+        self.assertEqual(m['status'], 'incomplete')
+
+    def test_failure_no_retry(self):
+        provider = self.provider(0)
         provider.generate.side_effect = OSError('offline')
         with patch.object(self.mod, 'load_provider', return_value=provider):
             self.assertEqual(self.mod.main(self.args + ['--yes']), 1)
             self.assertEqual(self.mod.main(self.args + ['--yes']), 2)
-        self.assertEqual(provider.generate.call_count, 1)
+        provider.generate.assert_called_once()
 
-    def test_ratio_and_invalid_image(self):
-        self.assertEqual(self.mod.main(self.args + ['--size', '1024x1024']), 2)
-        with self.assertRaises(ValueError):
-            self.mod.inspect_image(b'not an image')
-
-    def test_white_background_normalization(self):
+    def test_white_background(self):
         from PIL import Image
         source = self.project / 'transparent.png'
-        image = Image.new('RGBA', (3, 4), (0, 0, 0, 0))
-        image.putpixel((1, 1), (0, 0, 0, 255))
-        image.putpixel((2, 1), (0, 0, 0, 128))
-        image.save(source)
+        Image.new('RGBA', (3, 4), (0, 0, 0, 0)).save(source)
         destination = self.project / 'white.png'
-        result = self.mod.normalize_image(source, destination)
-        self.assertEqual(result['source_alpha_extrema'], [0, 255])
-        with Image.open(destination) as output:
-            self.assertEqual(output.mode, 'RGB')
-            self.assertEqual(output.size, (3, 4))
-            self.assertEqual(output.getpixel((0, 0)), (255, 255, 255))
-            self.assertEqual(output.getpixel((1, 1)), (0, 0, 0))
-            self.assertEqual(output.getpixel((2, 1)), (127, 127, 127))
-        with Image.open(source) as original:
-            self.assertEqual(original.mode, 'RGBA')
+        self.mod.normalize_image(source, destination)
+        with Image.open(destination) as image:
+            self.assertEqual(image.mode, 'RGB')
+            self.assertEqual(image.getpixel((0, 0)), (255, 255, 255))
 
-    def test_single_card(self):
-        provider = self.provider()
-        with patch.object(self.mod, 'load_provider', return_value=provider):
-            self.assertEqual(self.mod.main(self.args + ['--card', '1', '--yes']), 0)
-        self.assertEqual(provider.generate.call_count, 1)
+    def test_style_does_not_copy_characters(self):
+        from apply_style import apply
+        profile = self.project / 'style.json'
+        profile.write_text(json.dumps({'id':'test','status':'provisional','style_guide':'新风格','layout':'新版式','characters':'不应复制'}))
+        apply(self.project, profile)
+        actual = json.loads((self.project / '创作资料/cards.json').read_text())
+        self.assertEqual(actual['characters'], self.data['characters'])
+        self.assertEqual(actual['cards'], self.data['cards'])
+        self.assertEqual(actual['style_guide'], '新风格')

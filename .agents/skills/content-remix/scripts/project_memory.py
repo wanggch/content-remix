@@ -63,7 +63,7 @@ def sync(workspace: Path) -> dict:
     topics = []
     from project_paths import resolve
     for project in sorted((workspace / "wechat-posts").glob("*")):
-        if not project.is_dir() or not resolve(project, 'cards.json').is_file():
+        if not project.is_dir() or not resolve(project, '创作资料/cards.json').is_file():
             continue
         data = load_project(project)
         topics.append({

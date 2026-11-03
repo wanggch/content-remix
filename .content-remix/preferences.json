@@ -56,6 +56,48 @@
       "value": "当前风格暂时采用，以本项目创作资料/cards.json与图片/01.png～04.png为基准；第1张获明确满意认可，整组为暂用。过程文件已归档，旧.tmp/generated图片与快照路径不再作为现行引用。",
       "evidence": "本次会话用户：先暂时用这个图片风格吧。先清理历史文件吧。太多过程文件了。",
       "scope": "project:wechat-posts/20261102-心疼老婆四句话"
+    },
+    {
+      "kind": "explicit",
+      "key": "image_generation_workflow",
+      "value": "完整提示词包含全组图片，一次生成整组；不先试首张、不逐张生成或确认、不自动补图。接口多图能力需独立验证，不支持时不能回退逐张调用。",
+      "evidence": "本次用户：不会逐张生成图片，统一一次生成多张图片。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "project_layout",
+      "value": "只使用新中文分类目录，不兼容旧路径；过程文件直接删除，不归档。",
+      "evidence": "本次用户：不需要兼容旧路径，使用新的目录结构就行。此前：过程文件 删了就行。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "topic_alignment",
+      "value": "默认贴近对标同一具体读者需求，保留读者、表达主体、核心任务和标题承诺；原创落实在话术、例子与画面，不仅做同赛道新选题。仅明确要求拓展时换题。",
+      "evidence": "本次会话用户指出当前只能算相同赛道，并在选题贴近方案后确认：很高兴你认识到问题。现在处理吧。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "image_preview",
+      "value": "不自动调用系统图片应用打开生成图片；实际审核仍需读取图片。",
+      "evidence": "本次用户：继续，不需要再直接打开图片。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "image_generation_workflow",
+      "value": "仅交付一份完整图片创作提示词，由用户手动复制到ChatGPT网页端生图；不调用DDCherry、OpenAI或宿主图片工具，不主动试生成；回传图片后按需审核。",
+      "evidence": "用户：那我们之后就只生成图片创作提示词吧。我手动使用提示词在chatgpt网页端生成图片。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "image_review_workflow",
+      "value": "默认交付完整创作提示词即结束，不要求或提醒回传图片，不审核图片，不将图片审核列为待办；只检查文本策划与提示词。仅以后用户另行明确要求时才审核图片。",
+      "evidence": "用户：我一般情况下不会回传图片。也不需要你审核。",
+      "scope": "workspace"
     }
   ]
 }
