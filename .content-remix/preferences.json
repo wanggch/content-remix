@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "kind": "explicit",
+      "key": "prompt_delivery",
+      "value": "只交付整组创作提示词，不生成或交付逐张提示词。",
+      "evidence": "当前会话用户原话：不需要 逐张提示词，剩下的全做。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "prompt_filename",
+      "value": "整组提示词文件命名为创作提示词.md。",
+      "evidence": "当前会话用户原话：chatgpt-batch.md 改名为 创作提示词.md。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "image_repair_workflow",
+      "value": "不提供收到图片后的定向返修流程。",
+      "evidence": "当前会话用户原话：不需要 收到图片后的定向返修。",
+      "scope": "workspace"
+    }
+  ]
+}

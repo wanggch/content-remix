@@ -24,10 +24,11 @@ install_one() {
     rm -rf "$destination"
   fi
   # 仅复制运行所需文件，不将测试和开发辅助目录带入目标项目。
-  mkdir -p "$destination/scripts" "$destination/references"
+  mkdir -p "$destination/scripts" "$destination/references" "$destination/evals"
   cp "$SOURCE/SKILL.md" "$SOURCE/README.md" "$destination/"
   cp "$SOURCE"/scripts/*.py "$destination/scripts/"
   cp "$SOURCE"/references/*.md "$destination/references/"
+  cp "$SOURCE"/evals/*.json "$SOURCE"/evals/*.md "$destination/evals/"
   echo "Installed $name: $destination"
 }
 

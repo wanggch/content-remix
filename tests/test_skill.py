@@ -1,26 +1,70 @@
-"""Offline smoke tests; run: python3 -m unittest discover -s tests -v"""
+"""Offline regression tests: python3 -m unittest discover -s tests -v."""
 from __future__ import annotations
 
+import copy
+import importlib.util
 import json
+import struct
 import subprocess
 import sys
 import tempfile
 import unittest
+import zlib
 from pathlib import Path
 from unittest.mock import patch
-import importlib.util
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
+sys.path.insert(0, str(SCRIPTS))
 
 
 def load_script(name: str):
-    # 直接按文件路径加载独立 CLI 脚本，无需将 scripts 改成 Python 包。
     spec = importlib.util.spec_from_file_location(name, SCRIPTS / f"{name}.py")
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
     return module
+
+
+def sample_data(structure: str = "parallel") -> dict:
+    catalog = json.loads((ROOT / "evals/cases.json").read_text(encoding="utf-8"))
+    case = next(case for case in catalog["cases"] if case["content_structure"] == structure)
+    data = copy.deepcopy(catalog["base"])
+    for key in ("content_structure", "scene_policy", "cards"):
+        data[key] = copy.deepcopy(case[key])
+    data["format_contract"]["structure"] = {"source": structure, "target": structure, "evidence": "测试输入的结构要求"}
+    return data
+
+
+def write_data(project: Path, data: dict) -> None:
+    project.mkdir(parents=True, exist_ok=True)
+    (project / "cards.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def cli(name: str, *args: object, **kwargs) -> subprocess.CompletedProcess:
+    return subprocess.run([sys.executable, str(SCRIPTS / f"{name}.py"), *map(str, args)], capture_output=True, text=True, **kwargs)
+
+
+def complete_project(project: Path, data: dict) -> None:
+    write_data(project, data)
+    for name in ["00-source/source.md", "01-analysis.md", "02-topics.md", "03-storyboard.md", "04-publish.md", "05-review.md"]:
+        path = project / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("离线测试文档", encoding="utf-8")
+    (project / "00-source/source.json").write_text('{"status": "ok"}', encoding="utf-8")
+    result = cli("build_prompt", "--project", project)
+    if result.returncode:
+        raise AssertionError(result.stderr)
+
+
+def write_png(path: Path, width: int = 3, height: int = 4) -> None:
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    pixels = (b"\x00" + b"\x78\x8c\x96" * width) * height
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header)
+                     + chunk(b"IDAT", zlib.compress(pixels)) + chunk(b"IEND", b""))
 
 
 class SkillTest(unittest.TestCase):
@@ -41,163 +85,253 @@ class SkillTest(unittest.TestCase):
         mod = load_script("ingest")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            p = root / "article.html"
-            p.write_text('<meta property="og:title" content="原创素材"><div id="js_content">'
-                         '<p>原文第一段，有清晰的情绪冲突和很多细节。</p>'
-                         '<img data-src="https://mmbiz.qpic.cn/one">'
-                         '<p>原文第二段，来说明故事的最终转折与情绪。</p></div>', encoding="utf-8")
-            # 模拟下载响应，确保采集测试离线运行；这里只验证落盘，不解码图片。
-            fake_png = b"\x89PNG\r\n\x1a\n" + b"fake_data"
-            with patch.object(mod, "get_url_content", return_value=(fake_png, "image/png")), \
-                 patch.object(sys, "argv", ["ingest.py", "--html", str(p), "--out", str(root / "case")]):
+            source = root / "article.html"
+            source.write_text('<meta property="og:title" content="原创素材"><div id="js_content">'
+                              '<p>原文第一段，有清晰的情绪冲突和很多细节。</p>'
+                              '<img data-src="https://mmbiz.qpic.cn/one">'
+                              '<p>原文第二段，说明最终转折与情绪。</p></div>', encoding="utf-8")
+            image = root / "source.png"
+            write_png(image)
+            with patch.object(mod, "get_url_content", return_value=(image.read_bytes(), "image/png")), \
+                 patch.object(sys, "argv", ["ingest.py", "--html", str(source), "--out", str(root / "case")]):
                 self.assertEqual(mod.main(), 0)
-            doc = (root / "case/00-source/source.md").read_text()
-            self.assertTrue((root / "case/00-source/images/01.png").is_file())
+            doc = (root / "case/00-source/source.md").read_text(encoding="utf-8")
             self.assertTrue(doc.index("第一段") < doc.index("images/01.png") < doc.index("第二段"))
-            j = json.loads((root / "case/00-source/source.json").read_text())
-            self.assertEqual(j["status"], "ok")
-            self.assertEqual(j["title"], "原创素材")
+            data = json.loads((root / "case/00-source/source.json").read_text(encoding="utf-8"))
+            self.assertEqual(data["status"], "ok")
+            self.assertEqual(data["title"], "原创素材")
 
     def test_screenshots_mode(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             shot = root / "article-01.png"
-            shot.write_bytes(b"\x89PNG\r\n\x1a\n")
-            r = subprocess.run([sys.executable, str(SCRIPTS / "ingest.py"), "--screenshots", str(shot), "--out", str(root / "case")], capture_output=True, text=True)
-            self.assertEqual(r.returncode, 0, r.stderr)
-            data = json.loads((root / "case/00-source/source.json").read_text())
+            write_png(shot)
+            result = cli("ingest", "--screenshots", shot, "--out", root / "case")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            data = json.loads((root / "case/00-source/source.json").read_text(encoding="utf-8"))
             self.assertEqual(data["status"], "partial")
             self.assertTrue((root / "case/00-source/screenshots/01.png").exists())
 
     def test_render_dry_run_never_needs_key(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / "cards.json").write_text(json.dumps({"title":"测试", "cards":[{"index":1,"image_prompt":"一幅原创竖版图片，不要任何文字。"}]}, ensure_ascii=False), encoding="utf-8")
-            # 清空环境，验证未配置 API Key 时预览仍可成功，且不会生成图片。
-            r = subprocess.run([sys.executable, str(SCRIPTS / "render_images.py"), "--project", str(root)], capture_output=True, text=True, env={})
-            self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertIn("未调用 API", r.stdout)
-            self.assertFalse((root / "generated/01.png").exists())
+            data = sample_data()
+            write_data(root, data)
+            result = cli("render_images", "--project", root, env={})
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn("未调用 API", result.stdout)
+            self.assertFalse(any((root / "generated").iterdir()))
+            cards = load_script("render_images").load_cards(root)
+            for source, compiled in zip(data["cards"], cards):
+                self.assertIn(source["caption"], compiled["image_prompt"])
+                self.assertIn(source["scene"], compiled["image_prompt"])
+            self.assertFalse((root / "prompts").exists())
 
-    def test_quality_checker_detects_missing_artifacts(self):
-        mod = load_script("quality_check")
-        with tempfile.TemporaryDirectory() as tmp:
-            errors, warnings, info = mod.inspect(Path(tmp))
-            self.assertTrue(errors)
-            self.assertTrue(warnings)
-            self.assertTrue(info)
-
-    def test_dialogue_card_preserves_full_explanation(self):
-        mod = load_script("quality_check")
+    def test_single_batch_preserves_full_text_and_is_deterministic(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / "prompts").mkdir()
-            for name in mod.REQUIRED:
-                path = root / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("待审核", encoding="utf-8")
-            bubble = "你先吃，我来抱一会儿。"
-            body = "这是需要完整保留的生活解释。" * 6
-            caption = bubble + "\n" + body
-            prompt = "上气泡下解释，完整文字：\n" + caption
-            cards = [{"index": i, "role": "并列", "bubble_text": bubble,
-                      "body_text": body, "caption": caption, "alt": "家庭场景",
-                      "image_prompt": prompt} for i in range(1, 5)]
-            for i in range(1, 5):
-                (root / "prompts" / f"{i:02d}.md").write_text(prompt, encoding="utf-8")
-            data = {"title": "具体关心", "cards": cards}
-            (root / "cards.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-            errors, warnings, _ = mod.inspect(root)
+            data = sample_data()
+            write_data(root, data)
+            original = (root / "cards.json").read_bytes()
+            result = cli("build_prompt", "--project", root)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            batch = root / "prompts/创作提示词.md"
+            content = batch.read_text(encoding="utf-8")
+            self.assertEqual([path.name for path in batch.parent.iterdir()], ["创作提示词.md"])
+            for card in data["cards"]:
+                self.assertIn(card["caption"], content)
+                self.assertIn(card["scene"], content)
+            self.assertIn("场景和时间可不同", content)
+            self.assertNotIn("结尾回应开场", content)
+            self.assertEqual(cli("build_prompt", "--project", root).returncode, 0)
+            self.assertEqual(batch.read_text(encoding="utf-8"), content)
+            self.assertEqual((root / "cards.json").read_bytes(), original)
+
+    def test_contract_can_precede_storyboard(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            data = sample_data()
+            data["cards"] = []
+            write_data(root, data)
+            result = cli("build_prompt", "--project", root, "--contract-only")
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue((root / "02-创作约束.md").is_file())
+            self.assertFalse((root / "prompts/创作提示词.md").exists())
+            self.assertEqual(cli("build_prompt", "--project", root).returncode, 2)
+
+    def test_incomplete_explanation_and_placeholders_are_rejected(self):
+        mod = load_script("build_prompt")
+        data = sample_data()
+        data["cards"][0]["caption"] = data["cards"][0]["bubble_text"]
+        with self.assertRaisesRegex(ValueError, "caption 与气泡、底文不一致"):
+            mod.validate(data)
+        data = sample_data()
+        data["cards"][0]["bubble_text"] += "\n慢慢吃。"
+        data["cards"][0]["caption"] = data["cards"][0]["bubble_text"] + "\n" + data["cards"][0]["body_text"]
+        mod.validate(data)
+        self.assertIn("前2行放气泡", mod.render_batch(data))
+        for text in ["〔完整动作〕", "【填写文案】", "{{scene}}", "```text"]:
+            data = sample_data()
+            data["cards"][0]["scene"] = text
+            with self.assertRaisesRegex(ValueError, "占位符|代码块"):
+                mod.validate(data)
+
+    def test_invalid_json_shapes_produce_errors_without_traceback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bad_card = sample_data()
+            bad_card["cards"] = [None]
+            bad_structure = sample_data()
+            bad_structure["content_structure"] = []
+            for payload in [[], {"schema_version": 2}, bad_card, bad_structure]:
+                write_data(root, payload)
+                result = cli("build_prompt", "--project", root)
+                self.assertEqual(result.returncode, 2)
+                self.assertNotIn("Traceback", result.stderr)
+                errors, _, _ = load_script("quality_check").inspect(root)
+                self.assertTrue(errors)
+
+    def test_changed_structure_requires_reason_and_unknown_is_visible(self):
+        mod = load_script("build_prompt")
+        data = sample_data()
+        data["format_contract"]["structure"]["source"] = "story"
+        with self.assertRaisesRegex(ValueError, "change_reason"):
+            mod.validate(data)
+        data["format_contract"]["structure"]["change_reason"] = "测试用户明确要求改成并列卡"
+        mod.validate(data)
+        data["format_contract"]["structure"]["source"] = "unknown"
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            complete_project(root, data)
+            errors, warnings, _ = load_script("quality_check").inspect(root)
             self.assertEqual(errors, [])
-            self.assertFalse(any("精简" in w or "60字" in w for w in warnings))
-            cards[0]["caption"] = bubble
-            (root / "cards.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-            errors, _, _ = mod.inspect(root)
-            self.assertTrue(any("caption 与气泡、底文不一致" in e for e in errors))
-            cards[0]["caption"] = caption
-            cards[0]["image_prompt"] = bubble
-            (root / "cards.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-            errors, _, _ = mod.inspect(root)
-            self.assertTrue(any("未包含完整准确 caption" in e for e in errors))
+            self.assertTrue(any("未知素材" in warning for warning in warnings))
 
-    def test_direct_captioned_images_need_no_base_images(self):
+    def test_stale_batch_and_contract_fail_until_regenerated(self):
         mod = load_script("quality_check")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / "prompts").mkdir()
-            (root / "final").mkdir()
-            cards = []
-            for i in range(1, 5):
-                prompt = f"带字竖图，准确绘制文字：文案{i}。"
-                cards.append({"index": i, "role": "递进", "caption": f"文案{i}", "alt": "生活场景", "image_prompt": prompt})
-                (root / "prompts" / f"{i:02d}.md").write_text(prompt, encoding="utf-8")
-                # 结构检查只读取 PNG 头；此测试不模拟完整图片或视觉审核。
-                header = b"\x89PNG\r\n\x1a\n" + b"\x00\x00\x00\x0dIHDR" + (768).to_bytes(4, "big") + (1024).to_bytes(4, "big")
-                (root / "final" / f"{i:02d}.png").write_bytes(header)
-            for name in mod.REQUIRED:
-                path = root / name
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.write_text("测试文档", encoding="utf-8")
-            (root / "cards.json").write_text(json.dumps({"title": "测试", "cards": cards}, ensure_ascii=False), encoding="utf-8")
-            (root / "00-source/source.json").write_text('{"status": "ok"}', encoding="utf-8")
-            errors, warnings, _ = mod.inspect(root)
-            self.assertEqual(errors, [])
-            self.assertEqual(warnings, [])
-            self.assertFalse((root / "generated").exists())
+            data = sample_data()
+            complete_project(root, data)
+            data["cards"][1]["caption"] = "你先出门，垃圾我来带。"
+            data["format_contract"]["tone"]["target"] = "更简洁的生活口语"
+            write_data(root, data)
+            errors, _, _ = mod.inspect(root)
+            self.assertTrue(any("创作提示词.md 与" in error for error in errors))
+            self.assertTrue(any("02-创作约束.md 与" in error for error in errors))
+            self.assertEqual(cli("build_prompt", "--project", root).returncode, 0)
+            self.assertEqual(mod.inspect(root)[0], [])
+            batch = root / "prompts/创作提示词.md"
+            batch.write_text(batch.read_text(encoding="utf-8").replace(data["cards"][0]["caption"], "漏掉解释"), encoding="utf-8")
+            self.assertTrue(any("创作提示词.md 与" in error for error in mod.inspect(root)[0]))
 
-    def test_end_to_end_artifact_pipeline_offline(self):
-        # 用纯色底图代替付费生图，只验证导入、叠字和结构审核的离线链路。
-        try:
-            from PIL import Image
-        except ImportError:
-            self.skipTest("No Pillow")
-        compose = load_script("compose_cards")
-        try:
-            font = compose.find_font(None)
-        except FileNotFoundError:
-            self.skipTest("No Chinese font")
+    def test_invalid_data_does_not_overwrite_existing_delivery(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            src = root / "original.md"
-            src.write_text("# 一篇示例文章\n\n一段有内容的原创素材介绍。", encoding="utf-8")
-            r = subprocess.run([sys.executable, str(SCRIPTS / "ingest.py"), "--text", str(src), "--out", str(root / "project")], capture_output=True, text=True)
-            self.assertEqual(r.returncode, 0, r.stderr)
-            proj = root / "project"
-            cards = []
-            for i in range(1, 5):
-                prompt = f"单张原创生活摄影，第{i}张。没有文字，没有水印。"
-                cards.append({"index": i, "role": f"情绪递进{i}", "caption": f"原创的第{i}张图片文字。", "alt": "日常生活", "image_prompt": prompt})
-                (proj / "prompts" / f"{i:02d}.md").write_text(prompt, encoding="utf-8")
-                Image.new("RGB", (768, 1152), (120+i, 140+i, 150+i)).save(proj / "generated" / f"{i:02d}.png")
-            (proj / "cards.json").write_text(json.dumps({"title": "原创周末的四个瞬间", "cards": cards}, ensure_ascii=False), encoding="utf-8")
-            for doc in ["01-analysis.md", "02-topics.md", "03-storyboard.md", "04-publish.md", "05-review.md"]:
-                (proj / doc).write_text("# 测试用结构化内容\n\n这是离线测试文本", encoding="utf-8")
-            r = subprocess.run([sys.executable, str(SCRIPTS / "compose_cards.py"), "--project", str(proj), "--font", font], capture_output=True, text=True)
-            self.assertEqual(r.returncode, 0, r.stderr)
-            r = subprocess.run([sys.executable, str(SCRIPTS / "quality_check.py"), "--project", str(proj)], capture_output=True, text=True)
-            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-            self.assertIn("FAIL=0", r.stdout)
-            with Image.open(proj / "final/01.png") as im:
-                self.assertAlmostEqual(im.width / im.height, 0.75, delta=0.002)
+            data = sample_data()
+            complete_project(root, data)
+            batch = root / "prompts/创作提示词.md"
+            original = batch.read_bytes()
+            data["cards"][0]["caption"] = "遗漏底文"
+            write_data(root, data)
+            self.assertEqual(cli("build_prompt", "--project", root).returncode, 2)
+            self.assertEqual(batch.read_bytes(), original)
 
-    def test_compose_text_using_font(self):
-        try:
-            from PIL import Image
-        except ImportError:
-            self.skipTest("No Pillow")
-        mod = load_script("compose_cards")
-        try:
-            font = mod.find_font(None)
-        except FileNotFoundError:
-            self.skipTest("No Chinese font")
+    def test_nondefault_count_ratio_and_complete_image_files(self):
+        mod = load_script("quality_check")
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / "generated").mkdir()
-            Image.new("RGB", (800, 1200), (120, 142, 120)).save(root / "generated/01.png")
-            (root / "cards.json").write_text(json.dumps({"cards":[{"index":1,"caption":"这是第一张图的原创文案。"}]}, ensure_ascii=False))
-            r = subprocess.run([sys.executable, str(SCRIPTS / "compose_cards.py"), "--project", str(root), "--font", font], capture_output=True, text=True)
-            self.assertEqual(r.returncode, 0, r.stderr)
-            self.assertTrue((root / "final/01.png").exists())
+            data = sample_data()
+            data["cards"].append({**data["cards"][1], "index": 3})
+            data["aspect_ratio"] = "16:9"
+            complete_project(root, data)
+            self.assertTrue(any("最终带字图未全部生成" in warning for warning in mod.inspect(root)[1]))
+            for index in range(1, 4):
+                write_png(root / "final" / f"{index:02d}.png", 16, 9)
+            result = cli("quality_check", "--project", root)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("FAIL=0 WARN=0", result.stdout)
+            (root / "final/01.png").write_text("不是PNG", encoding="utf-8")
+            self.assertTrue(any("文件无效" in error for error in mod.inspect(root)[0]))
+
+    def test_preference_priority_evidence_and_scope(self):
+        mod = load_script("project_memory")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            def record(kind, value, scope="workspace"):
+                mod.record_preference(root, kind=kind, key="tone", value=value, evidence="测试用户原话或观察", scope=scope)
+            record("inferred", "推测喜欢短句")
+            record("explicit", "保留解释")
+            record("inferred", "推测只要标语")
+            record("explicit", "保留完整生活解释")
+            record("explicit", "账号内更简洁", "account:示例")
+            records = mod.context(root)["preferences"]
+            self.assertEqual(next(item["value"] for item in records if item["scope"] == "workspace"), "保留完整生活解释")
+            self.assertEqual(len(records), 2)
+            self.assertTrue(all(item["evidence"] for item in records))
+            with self.assertRaises(ValueError):
+                mod.record_preference(root, kind="explicit", key="tone", value="短句", evidence="", scope="workspace")
+
+    def test_history_sync_query_and_deletion_preserve_preferences(self):
+        mod = load_script("project_memory")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            a = root / "wechat-posts/a"
+            b = root / "wechat-posts/b"
+            first, second = sample_data(), sample_data("tutorial")
+            first["scene_tags"] = ["餐桌吃饭"]
+            second["scene_tags"] = ["饭盒分装"]
+            write_data(a, first)
+            write_data(b, second)
+            mod.record_preference(root, kind="explicit", key="tone", value="完整解释", evidence="测试原话", scope="workspace")
+            preference_path = root / ".content-remix/preferences.json"
+            original = preference_path.read_bytes()
+            self.assertEqual(len(mod.sync(root)["topics"]), 2)
+            result = mod.context(root, "饭盒分装")
+            self.assertEqual(result["topics"][0]["project"], "wechat-posts/b")
+            self.assertEqual(len(mod.context(root, exclude_project="wechat-posts/a")["topics"]), 1)
+            (a / "cards.json").unlink()
+            self.assertEqual(len(mod.sync(root)["topics"]), 1)
+            self.assertEqual(preference_path.read_bytes(), original)
+            history_path = root / ".content-remix/topic-history.json"
+            old_history = history_path.read_bytes()
+            (b / "cards.json").write_text("{}", encoding="utf-8")
+            with self.assertRaises(ValueError):
+                mod.sync(root)
+            self.assertEqual(history_path.read_bytes(), old_history)
+
+    def test_four_structures_regression_and_semantic_status(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            report = Path(tmp) / "report.md"
+            result = cli("evaluate", "--out", report)
+            self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            text = report.read_text(encoding="utf-8")
+            self.assertIn("4/4 通过", text)
+            self.assertEqual(text.count("程序检查：PASS"), 4)
+            self.assertIn("语义评估未执行", text)
+            self.assertIn("案例类型：synthetic", text)
+            catalog = json.loads((ROOT / "evals/cases.json").read_text(encoding="utf-8"))
+            catalog["cases"][0]["status"] = "user_approved"
+            unverified = Path(tmp) / "unverified.json"
+            unverified.write_text(json.dumps(catalog, ensure_ascii=False), encoding="utf-8")
+            rejected = cli("evaluate", "--cases", unverified)
+            self.assertEqual(rejected.returncode, 1)
+            self.assertIn("必须附 approval_evidence", rejected.stdout)
+
+    def test_installed_skill_runs_outside_source_without_personal_memory(self):
+        with tempfile.TemporaryDirectory(prefix="content remix ") as tmp:
+            workspace = Path(tmp)
+            result = subprocess.run(["bash", str(ROOT / "install.sh"), "codex"], cwd=workspace, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            installed = workspace / ".agents/skills/content-remix"
+            self.assertTrue((installed / "evals/cases.json").is_file())
+            self.assertFalse((installed / ".content-remix").exists())
+            data_project = workspace / "wechat-posts/example"
+            write_data(data_project, sample_data())
+            for script, args in [("build_prompt", ["--project", str(data_project)]), ("evaluate", [])]:
+                result = subprocess.run([sys.executable, str(installed / "scripts" / f"{script}.py"), *args], cwd=workspace, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr + result.stdout)
+            self.assertEqual(len(list((data_project / "prompts").iterdir())), 1)
 
 
 if __name__ == "__main__":

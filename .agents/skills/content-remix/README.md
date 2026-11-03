@@ -1,115 +1,118 @@
-# content-remix —— 公众号贴图文章原创创作 Skill
+# content-remix：公众号贴图原创创作 Skill
 
-适用于 macOS 上的 **Claude Code** 与 **Codex CLI**。输入一篇或多篇公众号文章链接、保存的 HTML、正文，或完整长截图，由 AI 负责对标拆解、原创选题、4 图分镜和提示词，并进行发布前审核。
+支持公众号链接、保存的HTML、文字、完整截图和已有风格档案。完成对标分析、原创选题、创作约束、分镜、整组带字图片提示词、发布文案及审核。默认4张独立3:4竖图，按用户要求调整。
 
-## 1. 项目内安装（不安装到全局）
-
-先进入需要使用此 Skill 的项目目录，再通过脚本的实际路径运行安装：
+## 安装与更新
 
 ```bash
-cd "/Users/qianjian/wgc/06-workspace/02-ddcherry-dream/01-code/content-remix"
-bash "/Users/qianjian/wgc/06-workspace/02-ddcherry-dream/01-code/content-remix/install.sh" all
-```
-
-安装到**当前工作目录**下的 `.claude/skills/content-remix` 和 `.agents/skills/content-remix`，不会写入用户主目录的全局 Skill 路径。请在该项目目录启动 Claude Code / Codex 使用。也可将 `all` 换成 `claude` 或 `codex`，仅安装到对应环境。安装不会主动覆盖已存在的同名 Skill，更新时请加 `--force`。
-
-### 更新已安装的 Skill
-
-修改本项目根目录中的 `SKILL.md`、`scripts/` 或 `references/` 等源文件后，重新运行安装脚本并加上 `--force`，将修改同步到项目内的安装副本：
-
-```bash
-cd "/Users/qianjian/wgc/06-workspace/02-ddcherry-dream/01-code/content-remix"
+cd /path/to/content-remix
+bash ./install.sh all
+# 修改源文件后更新两个项目内安装副本：
 bash ./install.sh all --force
 ```
 
-也可以只更新一个环境：
+`all`可换为`claude`或`codex`。安装目标由调用时的当前目录决定，位于 `.claude/skills/content-remix` 和 `.agents/skills/content-remix`，不写全局目录。`--force`替换安装副本及其中手工修改；修改应在源目录完成。更新后重开相应会话以加载新版。
 
-```bash
-bash ./install.sh claude --force
-# 或
-bash ./install.sh codex --force
-```
+安装包含运行脚本、参考规则和合成评估案例；用户偏好、选题历史与作品保存在创作工作区，不随Skill安装分发。
 
-注意：
+## 对话使用
 
-- 安装目标由运行命令时的**当前工作目录**决定；上述命令只更新本项目的 `.claude/skills/content-remix` 和 `.agents/skills/content-remix`，不会写入全局目录。
-- `--force` 会删除旧安装副本后重新复制，副本内的手动修改和 `.venv` 也会被删除。请修改项目根目录中的源文件，不要直接修改安装副本；如果此前创建过虚拟环境且仍需使用，更新后需自行重新创建；默认 ChatGPT 生图流程不需要本地虚拟环境。
-- 更新后重新启动该项目的 Claude Code / Codex 会话，确保加载新版 Skill。
-
-## 2. 对话中直接使用
-
-**Claude Code**：
+Claude Code：
 
 ```text
-/content-remix 参考这篇公众号贴图文章，完成对标拆解和原创四图策划： https://mp.weixin.qq.com/s/jr85nWkTuOiNtJ0vf4PgOw
+/content-remix 参考这篇公众号贴图文章，完成原创四图策划：https://mp.weixin.qq.com/s/...
 ```
 
-**Codex CLI**：
+Codex：
 
 ```text
-$content-remix 参考这篇公众号贴图文章，输出完整的原创四图文章： https://mp.weixin.qq.com/s/jr85nWkTuOiNtJ0vf4PgOw
+$content-remix 参考这篇公众号贴图文章，交付创作提示词：https://mp.weixin.qq.com/s/...
 ```
 
-提示：先在终端启动 Claude Code / Codex，再在其对话框粘贴对应文本。若新装 Skill 未显示，重开 CLI 会话。
+链接受限时可提供完整截图或本地HTML。截图由当前宿主的视觉能力读取，脚本不执行OCR；无视觉能力时明确未知，不虚构画风。同账号多篇样本可归纳 `style-profile.md`，用户偏好另行记录。
 
-## 3. 公众号访问失败时
+## 当前流程
 
-微信可能返回反爬/验证码/不完整图片。此时用浏览器手动保存网页 HTML（建议“网页，完整”），或将**完整长截图**按顺序保存成本地文件后输入：
+1. 读取工作区偏好与历史选题，检查候选主题、场景和动作是否重复。
+2. 导入素材，区分事实与推测，识别并列卡、连续故事、前后对照或步骤教程。
+3. 给出至少5个原创候选并选定一个，在分镜前固定结构、层级、篇幅、语感与视觉五项约束。
+4. 在 `cards.json` 维护全组设定、逐图画面和准确文案，脚本生成 `02-创作约束.md` 与唯一提示词文件 `prompts/创作提示词.md`。
+5. 复制整组提示词到支持生图的ChatGPT，生成独立带字图片；补齐发布文案和审核记录，更新选题索引。
+6. 实际图片收到后再逐张审核，未生图时只报告提示词完成。
+
+人物一致性与场景连续性分别处理：并列卡可跨时空，故事要求因果连续，对照要求条件可比，教程要求步骤完整。脚本不调用语言模型；分析和创作由当前代理执行。
+
+## 常用命令
+
+```bash
+SKILL_DIR="/path/to/project/.agents/skills/content-remix"
+WORKSPACE="/path/to/project"
+PROJECT="$WORKSPACE/wechat-posts/日期-主题"
+
+python3 "$SKILL_DIR/scripts/project_memory.py" context --workspace "$WORKSPACE" --query '本次主题 场景 动作'
+python3 "$SKILL_DIR/scripts/ingest.py" --url 'https://mp.weixin.qq.com/s/...' --out "$PROJECT"
+# 也可改用 --html '/path/to/article.html'、--text '/path/to/article.md'
+# 或 --screenshots '/path/to/01.png' '/path/to/02.png'
+
+# 先由代理按 references/cards-schema.md 写入全组设定和约束，cards可暂为空：
+python3 "$SKILL_DIR/scripts/build_prompt.py" --project "$PROJECT" --contract-only
+# 完成分镜与cards后统一生成：
+python3 "$SKILL_DIR/scripts/build_prompt.py" --project "$PROJECT"
+python3 "$SKILL_DIR/scripts/quality_check.py" --project "$PROJECT"
+python3 "$SKILL_DIR/scripts/project_memory.py" sync --workspace "$WORKSPACE"
+```
+
+JSON为统一内容源，修改后重新生成；检查器会发现整组文件或约束未同步、准确文案缺失、模板占位符、结构字段不符等问题。不会生成或要求 `prompts/01.md` 等文件。不同于文件校验，语感、审美、原创性与实际图片需要另外审查。
+
+## 工作区记录
+
+`.content-remix/preferences.json` 保存明确偏好与推测，每条附证据和适用范围。本次指令优先，明确偏好优先于推测；同类以最新明确要求为准。`.content-remix/topic-history.json` 从现有作品重建，记录主题、结构、场景和动作；删除项目后运行sync清除索引。
+
+```bash
+python3 "$SKILL_DIR/scripts/project_memory.py" preference --workspace "$WORKSPACE" \
+  --kind explicit --key example_key --value '用户实际要求' \
+  --evidence '用户原话及实际来源位置' --scope workspace
+```
+
+仅在有真实证据时记录。字面检索只辅助查重，不证明语义重复；建档不等于用户认可或发布成功。具体规则见 `references/workspace-memory.md`。
+
+## 图片生成与审核
+
+默认无需API Key：复制 `创作提示词.md` 中完整代码块到ChatGPT。模型、界面和额度决定单轮输出数量，不能承诺全部一次完成。图片直接带准确中文文案；下载后核对文字、人物、结构和手机阅读效果，保存为 `final/01.png` 等。其他格式需真实转换，不能只改扩展名。无图时不宣称审核通过，不提供定向修图流程。
+
+如用户明确选择OpenAI付费图像API并配置 `OPENAI_API_KEY`：
+
+```bash
+python3 "$SKILL_DIR/scripts/render_images.py" --project "$PROJECT"       # 只预览
+python3 "$SKILL_DIR/scripts/render_images.py" --project "$PROJECT" --yes # 已获费用授权
+```
+
+模型访问与计费取决于账号及官方当前规格，必要时用 `--model` 指定可用模型。脚本从同一JSON即时组合请求，输出到 `generated/`，经检查后选入 `final/`。不默认调用、不自动重试付费请求。
+
+## 验证与创作评估
+
+```bash
+python3 -m unittest discover -s tests -v
+python3 scripts/evaluate.py --out ./creative-evaluation.md
+```
+
+四种结构的固定案例位于 `evals/cases.json`，是合成回归案例。报告区分程序检查和待语义审查，不将自动通过当作用户认可或传播效果证明。随着实际使用，仅在用户明确认可时加入带认可证据的案例；规则见 `references/creative-evaluation.md`。
+
+## 输出目录
 
 ```text
-/content-remix 用以下截图作为对标素材：/Users/me/Desktop/article-01.png /Users/me/Desktop/article-02.png；输出一套独立原创的四图内容。
+wechat-posts/日期-主题/
+├── 00-source/
+├── 01-analysis.md
+├── 02-topics.md
+├── 02-创作约束.md
+├── 03-storyboard.md
+├── cards.json
+├── prompts/创作提示词.md
+├── 04-publish.md
+├── 05-review.md
+├── generated/   # 可选API输出
+└── final/       # 实际带字图片
 ```
 
-截图模式不进行 OCR：需要 Claude Code / Codex 当前可用的视觉能力确实读取图片后才能分析；否则 AI 会要求补充文字或标注未知。
-
-**账号风格档案**：如果提供同一账号的多篇素材，可要求 AI 顺便保存 `style-profile.md`，今后让 Skill 读取该文件，就能复用选题/视觉规律，无需每次从零拆解。单篇文章只能形成临时画像，不宜声称代表整个账号风格。
-
-## 4. 纯脚本使用（可在任何目录运行）
-
-```bash
-# 指向已安装 Skill 的项目绝对路径；Codex 用户改为 .agents/skills/content-remix
-SKILL_DIR="/Users/qianjian/wgc/06-workspace/02-ddcherry-dream/01-code/content-remix/.claude/skills/content-remix"
-python3 "$SKILL_DIR/scripts/ingest.py" --url 'https://mp.weixin.qq.com/s/jr85nWkTuOiNtJ0vf4PgOw' --out './wechat-posts/demo'
-```
-
-脚本仅负责采集与整理，并不调用语言模型。文章分析、选题、分镜和文案由你正在运行的 Claude Code / Codex 按 `SKILL.md` 完成。
-
-## 5. 先交付提示词，再用 ChatGPT 生成带字图片
-
-1. Skill 完成必要分析和分镜后，优先输出 `prompts/chatgpt-batch.md`，提供整组图片创作提示词；随后补齐 `cards.json`、逐张提示词与其他文档。
-2. 将文件中的总提示词整段复制到支持图片生成的 ChatGPT 对话，一次请求生成多张**独立带字竖图**，不是一张四宫格。文字内容、位置和排版已写入提示词，不需要生成或保留无字版本，也不需要后期叠字。
-3. 实际生成数量取决于当前模型、界面和额度；若数量不足或某张有问题，使用文件中的续生成/单张修订指令补齐。
-4. 下载后按序保存为 `final/01.png` 等，逐张核对中文错漏、人物一致性和手机端可读性。其他格式需真实转换为 PNG，不能只改扩展名。未收到图片前，只报告“提示词包完成，图片待生成/待审核”。
-
-此流程无需配置 API Key，ChatGPT 权限与额度以账号界面为准。不会默认调用付费 API。`compose_cards.py` 仅作为历史辅助脚本保留，不参与当前流程。
-
-如明确选择通过 OpenAI 图像 API 在终端出图，可使用现有脚本（按带字提示词生成到 `generated/`，选定图片再复制到 `final/`，不再叠字）：
-
-```bash
-# 先自己配置 API Key（不要发给对话或写进仓库）
-export OPENAI_API_KEY='你的API密钥'
-python3 "$SKILL_DIR/scripts/render_images.py" --project './wechat-posts/demo'           # 只预览，不调用 API
-python3 "$SKILL_DIR/scripts/render_images.py" --project './wechat-posts/demo' --yes     # 会产生 API 费用
-```
-
-默认模型 `gpt-image-2.5-flare`。API 计费和是否能访问取决于你的账号与当前官方政策。多图生成仅通过提示词尽量保持角色一致；要求严格一致时应使用支持参考图的编辑工作流。
-
-图片完成后可运行结构检查，无需 Pillow：
-
-```bash
-python3 "$SKILL_DIR/scripts/quality_check.py" --project './wechat-posts/demo'
-```
-
-结构检查不能识别中文错字、视觉畸形或原创性问题，仍需实际查看每张图片。
-
-## 6. 输出约定
-
-每次独立新建一个 `wechat-posts/<日期-主题>/`，保存 `00-source`、`01-analysis.md`、`02-topics.md`、`03-storyboard.md`、`cards.json`、`prompts/`、`04-publish.md`、`05-review.md`，优先交付 `prompts/chatgpt-batch.md`；ChatGPT 生成的带字图片保存到 `final/`，`generated/` 仅供可选 API 工作流使用。
-
-## 7. 已知边界
-
-- **网址提取并非百分之百成功**：动态加载、微信安全验证和访问限制可能导致失败，转截图或 HTML 即可继续。
-- **无法仅靠脚本自动完成 AI 语义分析**：需要在 Claude Code / Codex 中调用 Skill。
-- **Claude Code / Codex 不一定内置图片生成**：无生图工具时交付完整可复制提示词；可选 API 方式会产生费用。
-- **AI 视觉审核不是生产级保证**：最终发布前人工预览、确认原创与授权。
-- 不提供绕过平台登录、验证码、防爬或自动发布功能。
+网页提取可能失败，可换用已保存素材；生图受当前工具、权限与额度限制。结构检查不能代替实际图片、版权或原创性审核。发布由用户自行执行，不提供登录绕过或自动发布。

@@ -1,0 +1,72 @@
+{
+  "base": {
+    "schema_version": 2,
+    "title": "合成创作回归案例",
+    "audience": "阅读生活建议的成年人",
+    "theme": "以具体行动说明一个生活问题",
+    "characters": "两位成年室友，甲短发蓝衬衫，乙卷发米色上衣；跨图保持各自外貌与服装",
+    "style_guide": "白底简洁卡通，清晰黑线和柔和色块，使用独立角色设计",
+    "layout": "按各卡提供的文字层级布局；有气泡与解释时分区，黑色易读字，四周留安全边距，图文不重叠",
+    "aspect_ratio": "3:4",
+    "format_contract": {
+      "text_layers": {"source": "各案例约定的文字层级", "target": "保留各卡完整文案与原有分区", "evidence": "合成输入约定，非真实对标观察"},
+      "caption_length": {"source": "合成输入约定", "target": "保留完整文案", "evidence": "案例中准确文案", "min_chars": 1, "max_chars": 200},
+      "tone": {"source": "生活口语", "target": "生活口语", "evidence": "合成输入约定"},
+      "visual": {"source": "简洁卡通", "target": "简洁卡通", "evidence": "合成输入约定"}
+    }
+  },
+  "cases": [
+    {
+      "id": "parallel-explanations",
+      "status": "synthetic",
+      "content_structure": "parallel",
+      "scene_policy": "各卡独立，可在餐桌或门口发生，时间不同；固定人物外貌与衣服",
+      "must_include": ["并列话术卡", "场景和时间可不同", "第一行放气泡"],
+      "must_not_include": ["结尾回应开场", "按可执行顺序展示动作"],
+      "semantic_checks": ["长解释是否保留生活细节而非口号", "每张是否能独立成立", "口语是否自然"],
+      "cards": [
+        {"index": 1, "role": "留出吃饭时间", "scene": "餐桌边甲接过响着的手机，把正在处理的预约接手，乙放松坐下吃饭；甲不催促，餐具清楚。", "bubble_text": "你先吃，我来接。", "body_text": "饭刚摆好，预约电话又打来了。\n别让对方拿着筷子还要一边解释时间。\n接过手机，把剩下的事情说清楚，\n让这顿饭能从头到尾安稳吃完。\n答应接手，就把细节一起记下来，\n别挂了电话又让对方重新问一遍。", "caption": "你先吃，我来接。\n饭刚摆好，预约电话又打来了。\n别让对方拿着筷子还要一边解释时间。\n接过手机，把剩下的事情说清楚，\n让这顿饭能从头到尾安稳吃完。\n答应接手，就把细节一起记下来，\n别挂了电话又让对方重新问一遍。", "alt": "甲接手电话，乙继续吃饭。"},
+        {"index": 2, "role": "出门前接手", "scene": "另一天门口乙穿鞋，甲拿起装好的垃圾袋；不复用第一张餐桌场景。", "caption": "你先穿鞋，垃圾我带下去。", "alt": "甲提垃圾袋，乙在门口穿鞋。"}
+      ]
+    },
+    {
+      "id": "story-continuity",
+      "status": "synthetic",
+      "content_structure": "story",
+      "scene_policy": "同一晚同一厨房，两只白碗和一块灰抹布；清洗后碗放回架子，灯光一致",
+      "must_include": ["连续故事", "结尾回应开场", "两只白碗"],
+      "must_not_include": ["场景和时间可不同"],
+      "semantic_checks": ["动作是否形成因果", "碗和抹布是否前后连续", "结尾是否回应最初需要"],
+      "cards": [
+        {"index": 1, "role": "提出需要", "scene": "乙坐在餐桌旁看两只白碗，甲在旁边，灰抹布放在桌角。", "caption": "我有点累，今晚你来洗碗好吗？", "alt": "乙提出洗碗请求。"},
+        {"index": 2, "role": "落实并回应", "scene": "甲把洗净的两只白碗放回架子，灰抹布挂好，乙已坐下休息；仍为同一厨房。", "caption": "碗收好了，我们都歇一会儿。", "alt": "两只白碗已收好，两人休息。"}
+      ]
+    },
+    {
+      "id": "contrast-comparable",
+      "status": "synthetic",
+      "content_structure": "contrast",
+      "scene_policy": "同一餐桌与两人，01与02为对照；灯光、碗盘与画幅一致，仅改变回应方式",
+      "must_include": ["前后对照", "保持比较对象、条件与视觉尺度可比"],
+      "must_not_include": ["结尾回应开场", "按可执行顺序展示动作"],
+      "semantic_checks": ["比较条件是否一致", "是否只改变关键动作", "是否暗示未经证实的必然效果"],
+      "cards": [
+        {"index": 1, "role": "对照A：催促", "scene": "甲在同一餐桌旁站着催乙，乙一手拿手机一手握筷子，饭碗在面前。", "caption": "快吃呀，怎么还没吃完？", "alt": "甲催促正在接电话的乙。"},
+        {"index": 2, "role": "对照B：接手", "scene": "同样餐桌与碗盘，甲接过电话，乙两手腾出开始吃饭，其他比较条件保持一致。", "caption": "电话我来接，你安心吃。", "alt": "甲接手电话，让乙吃饭。"}
+      ]
+    },
+    {
+      "id": "tutorial-steps",
+      "status": "synthetic",
+      "content_structure": "tutorial",
+      "scene_policy": "同一桌面，一只空饭盒、一碗已放凉的米饭与盒盖，按步骤完成分装",
+      "must_include": ["步骤教程", "输入、操作和结果", "不能跳过"],
+      "must_not_include": ["结尾回应开场", "场景和时间可不同"],
+      "semantic_checks": ["是否缺少必要步骤", "工具变化是否合理", "每步是否能照着执行"],
+      "cards": [
+        {"index": 1, "role": "步骤1：分装", "scene": "桌面上空饭盒打开，甲用饭勺把已放凉的米饭分装进盒内，盒盖在右侧。", "caption": "把放凉的米饭装进饭盒。", "alt": "用饭勺分装米饭。"},
+        {"index": 2, "role": "步骤2：盖好", "scene": "同一饭盒已有米饭，甲把右侧盒盖拿起盖严，不额外增加饭盒。", "caption": "合上盒盖，检查边缘盖紧。", "alt": "将饭盒盖好。"}
+      ]
+    }
+  ]
+}

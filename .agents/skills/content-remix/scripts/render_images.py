@@ -11,19 +11,14 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from build_prompt import image_prompt, load_project
+
 API = "https://api.openai.com/v1/images/generations"
 
 
 def load_cards(project: Path) -> list[dict]:
-    data = json.loads((project / "cards.json").read_text(encoding="utf-8"))
-    cards = data.get("cards", [])
-    if not isinstance(cards, list) or not cards:
-        raise ValueError("cards.json 必须包含非空 cards 数组")
-    # 连续序号与 prompts/、generated/、final/ 的两位数文件名保持对应。
-    for index, card in enumerate(cards, 1):
-        if card.get("index") != index or not str(card.get("image_prompt", "")).strip():
-            raise ValueError(f"第 {index} 张图需有正确 index 和非空 image_prompt")
-    return cards
+    data = load_project(project)
+    return [{**card, "image_prompt": image_prompt(data, card)} for card in data["cards"]]
 
 
 def main() -> int:
@@ -43,7 +38,7 @@ def main() -> int:
         return 2
     target_dir = project / "generated"
     target_dir.mkdir(parents=True, exist_ok=True)
-    # 默认跳过已有底图，便于中断后续跑；只有 --overwrite 才重新付费生成。
+    # 默认跳过已有图片，便于中断后续跑；只有 --overwrite 才重新付费生成。
     todo = [c for c in cards if args.overwrite or not (target_dir / f"{c['index']:02d}.png").exists()]
     print(f"模型：{args.model}; 尺寸：{args.size}; 质量：{args.quality}; 待生成：{len(todo)}/{len(cards)}")
     for c in todo:
