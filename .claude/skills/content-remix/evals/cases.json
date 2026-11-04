@@ -21,7 +21,7 @@
       "status": "synthetic",
       "content_structure": "parallel",
       "scene_policy": "各卡独立，可在餐桌或门口发生，时间不同；固定人物外貌与衣服",
-      "must_include": ["并列话术卡", "场景和时间可不同", "第一行放气泡"],
+      "must_include": ["并列卡片", "场景和时间可不同", "第一行放气泡"],
       "must_not_include": ["结尾回应开场", "按可执行顺序展示动作"],
       "semantic_checks": ["长解释是否保留生活细节而非口号", "每张是否能独立成立", "口语是否自然"],
       "cards": [

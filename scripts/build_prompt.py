@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 STRUCTURES = {
-    "parallel": ("并列话术卡", "每张表达一个独立观点或场景。人物与画风统一，场景和时间可不同，不强行编成连续剧情。"),
+    "parallel": ("并列卡片", "每张表达一个独立观点或场景。人物与画风统一，场景和时间可不同，不强行编成连续剧情。"),
     "story": ("连续故事", "按顺序推进同一个事件，保持时间、空间、人物与道具的因果连续，结尾回应开场。"),
     "contrast": ("前后对照", "明确每张属于哪一组对照，保持比较对象、条件与视觉尺度可比，不把差异归因于无关因素。"),
     "tutorial": ("步骤教程", "按可执行顺序展示动作，写清每步的输入、操作和结果，不能跳过完成任务所需的关键步骤。"),
@@ -77,6 +77,21 @@ def validate(data: object, *, require_cards: bool = True) -> dict:
             raise ValueError(f"第 {index} 张请使用 scene；image_prompt 已由脚本即时组合")
         for field in ("role", "scene", "caption", "alt"):
             require_text(card, field, f"第 {index} 张")
+        if 'text_regions' in card:
+            if 'bubble_text' in card or 'body_text' in card:
+                raise ValueError(f'第 {index} 张文字分区不能与旧气泡字段混用')
+            regions = card['text_regions']
+            if not isinstance(regions, list) or not regions:
+                raise ValueError(f'第 {index} 张text_regions必须是非空数组')
+            for region in regions:
+                if not isinstance(region, dict):
+                    raise ValueError('文字分区必须是对象')
+                for field in ('kind', 'position', 'text'):
+                    require_text(region, field, f'第 {index} 张文字分区')
+                if region['kind'] not in {'heading', 'body', 'bubble'}:
+                    raise ValueError('文字分区kind必须为heading/body/bubble')
+            if card['caption'] != '\n'.join(r['text'] for r in regions):
+                raise ValueError(f'第 {index} 张caption与文字分区不一致')
         if "bubble_text" in card or "body_text" in card:
             bubble = require_text(card, "bubble_text", f"第 {index} 张")
             body = require_text(card, "body_text", f"第 {index} 张")
@@ -109,7 +124,13 @@ def common_prompt(data: dict) -> str:
 def card_section(card: dict) -> str:
     text = (f"【{card['index']:02d}｜{card['role']}】\n画面：{card['scene']}\n"
             f"图片内准确文字（保留换行）：\n{card['caption']}\n")
-    if "bubble_text" in card:
+    if 'text_regions' in card:
+        start = 1
+        for region in card['text_regions']:
+            end = start + region['text'].count('\n')
+            text += f"文字分区：第{start}—{end}行（{region['kind']}）放在{region['position']}，不得重复到其他区域。\n"
+            start = end + 1
+    elif "bubble_text" in card:
         line_count = card["bubble_text"].count("\n") + 1
         bubble_region = "第一行" if line_count == 1 else f"前{line_count}行"
         text += f"文字分区：{bubble_region}放气泡，其余文字按指定换行放底部解释区；解释不得塞进气泡。\n"
@@ -132,17 +153,16 @@ def render_batch(data: dict) -> str:
     return (
         "# 创作提示词\n\n"
         "复制下方整个代码块到支持图片生成的 ChatGPT 对话。所有创作设定均在此文件中；无需读取本地文件。"
-        "多图输出受模型、界面和额度影响，实际图片仍需核对文字、人物及手机可读性。\n\n"
+        "多图输出受模型、界面和额度影响；本文件交付不代表图片已经生成。\n\n"
         "```text\n"
         f"请一次生成整组 {count} 张独立带字图片，按 01—{count:02d} 顺序输出，不逐张请求确认。"
-        "不是一张四宫格、拼贴或联系表。尽可能完成全部图片；数量不足时说明已完成序号，不用文字描述冒充图片。\n\n"
+        "不是一张多宫格、拼贴或联系表。尽可能完成全部图片；数量不足时说明已完成序号，不用文字描述冒充图片。\n\n"
         "【全组设定】\n" + common_prompt(data) + "\n\n" + sections +
         "\n【质量要求】\n每张只表达一个主要观点或动作；按所选结构组织图片。"
         "检查五官、手指、人体结构、透视、物件数量和文字错漏；画面与文字互补。"
         "使用独立创作的角色、情节和构图，不照搬对标作品的独特表达。\n```\n\n"
-        "## 整组结果检查\n\n"
-        "数量不足、拼图或缺失文案均报告未完成，不自动逐张补图、不拆拼图冒充独立生成、不自动重试。"
-        "整组核对数量、顺序、文案与人物；程序通过不代表视觉审核通过。\n"
+        "## 交付说明\n\n"
+        "本轮交付止于完整提示词，不要求回传图片或进行图片审核；程序检查不证明实际视觉效果。\n"
     )
 
 

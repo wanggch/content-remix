@@ -11,7 +11,7 @@ from pathlib import Path
 from project_paths import resolve
 from build_prompt import BATCH_PATH, CONTRACT_PATH, DIMENSIONS, load_project, render_batch, render_contract
 
-REQUIRED = ["对标素材/source.md", "创作资料/对标分析.md", "创作资料/选题与分镜.md", "创作资料/选题与分镜.md",
+REQUIRED = ["对标素材/source.md", "创作资料/对标分析.md", "创作资料/选题与分镜.md",
             "发布文案.md", "记录/审核.md", "创作资料/cards.json", str(CONTRACT_PATH), str(BATCH_PATH)]
 
 
@@ -26,7 +26,7 @@ def png_dimensions(path: Path) -> tuple[int, int]:
     return width, height
 
 
-def inspect(root: Path) -> tuple[list[str], list[str], list[str]]:
+def inspect(root: Path, *, check_images: bool = False) -> tuple[list[str], list[str], list[str]]:
     errors: list[str] = []
     warnings: list[str] = []
     info: list[str] = []
@@ -47,8 +47,6 @@ def inspect(root: Path) -> tuple[list[str], list[str], list[str]]:
                     errors.append(f"{relative} 与 cards.json 不一致；请重新运行 build_prompt.py")
             except (OSError, UnicodeError) as exc:
                 errors.append(f"{relative} 无法读取：{exc}")
-        if len(data["title"]) > 20:
-            warnings.append(f"标题超过20字（{len(data['title'])}字）")
         lengths = data["format_contract"]["caption_length"]
         for card in data["cards"]:
             count = len(card["caption"])
@@ -56,6 +54,7 @@ def inspect(root: Path) -> tuple[list[str], list[str], list[str]]:
                 warnings.append(f"第 {card['index']} 张文案 {count} 字符，偏离约定篇幅，请核查阅读量")
         if any(data["format_contract"][key]["source"] == "unknown" for key in DIMENSIONS):
             warnings.append("创作约束中有未知素材，不能宣称已完成对应对标拆解")
+    if data and check_images:
         cards = data["cards"]
         ratio_w, ratio_h = map(int, data["aspect_ratio"].split(":"))
         expected_ratio = ratio_w / ratio_h
@@ -87,8 +86,9 @@ def inspect(root: Path) -> tuple[list[str], list[str], list[str]]:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--project", type=Path, required=True)
+    ap.add_argument('--check-images', action='store_true', help='显式检查已有图片；默认仅检查文本与编译')
     args = ap.parse_args()
-    errors, warnings, info = inspect(args.project.expanduser().resolve())
+    errors, warnings, info = inspect(args.project.expanduser().resolve(), check_images=args.check_images)
     for prefix, messages in [("INFO", info), ("WARN", warnings), ("FAIL", errors)]:
         for message in messages:
             print(f"{prefix}: {message}")

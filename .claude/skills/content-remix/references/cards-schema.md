@@ -50,7 +50,8 @@
 - `scene_policy` 明确哪些要统一、哪些可变；并列卡不强制同一晚或同一房间。连续故事才要求因果与道具连续。对照需写明配对和相同条件，教程需写明步骤依赖。
 - `characters`、`style_guide`、`layout` 完整具体且自包含，不写“同上”“见本地文件”。文字排版写明位置、字号层级、字体风格、对比度和安全边距；style_guide 不重复人物、准确文案和整段版式。
 - 每张必须含连续整数 `index`、非空 `role`、`scene`、`caption`、`alt`。scene只描述当前画面；caption只保存完整准确入画文字。不保存 `image_prompt`。
-- 有气泡和解释时同时填写 `bubble_text`、`body_text`，caption 严格等于两者用一个换行拼接的结果，保留各区原有换行。极简图不必填写这两项。
+- 新作有多个文字区时使用 `text_regions` 数组，每项含 `kind`（heading/body/bubble）、`position`（明确位置与气泡说话者）、`text`（准确文字）。caption 必须严格等于各区text按数组顺序用一个换行拼接；编译器按行号输出分区，位置由position决定，不强制解释在底部。例：`[{"kind":"heading","position":"顶部","text":"观点标题"},{"kind":"body","position":"标题下方","text":"解释第一行\n解释第二行"},{"kind":"bubble","position":"下方漫画中妻子头顶，尾指妻子","text":"一句台词"}]`。在JSON文件中换行应转义为\\n。
+- 已有 `bubble_text`、`body_text` 仅表示旧版顶部气泡＋底部解释布局，caption为二者换行拼接；不能与text_regions混用。无需迁移已发布作品。单文字区可仅写caption与layout。
 - 不留模板占位符，不嵌入代码块。脚本保留原始文案，不自行润色、缩句或替换标点。
 
 ## 输出

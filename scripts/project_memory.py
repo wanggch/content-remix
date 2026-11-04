@@ -43,6 +43,8 @@ def preferences(workspace: Path) -> list[dict]:
     for entry in entries:
         if not isinstance(entry, dict) or entry.get("kind") not in {"explicit", "inferred"}:
             raise ValueError("偏好记录 kind 必须为 explicit 或 inferred")
+        if entry.get('status', 'active') not in {'active', 'superseded'}:
+            raise ValueError('偏好记录status必须为active或superseded')
         for key in ("key", "value", "evidence", "scope"):
             if not isinstance(entry.get(key), str) or not entry[key].strip():
                 raise ValueError(f"偏好记录缺少 {key}")
@@ -52,6 +54,8 @@ def preferences(workspace: Path) -> list[dict]:
 def effective_preferences(entries: list[dict]) -> list[dict]:
     selected: dict[tuple[str, str], dict] = {}
     for entry in entries:
+        if entry.get('status') == 'superseded':
+            continue
         key = (entry["scope"], entry["key"])
         previous = selected.get(key)
         if previous is None or entry["kind"] == "explicit" or previous["kind"] != "explicit":
@@ -72,7 +76,7 @@ def sync(workspace: Path) -> dict:
             "scene_tags": data.get("scene_tags", []), "action_tags": data.get("action_tags", []),
             "scenes": [card["scene"] for card in data["cards"]],
             "roles": [card["role"] for card in data["cards"]],
-            "status": "策划已建档；用户认可及发布效果未记录",
+            "status": "策划已建档；本索引未汇总认可与发布数据，请查看项目记录及案例",
         })
     # 仅在全部项目可解析后更新索引，避免错误时覆盖有效历史。
     entries = preferences(workspace)
@@ -115,7 +119,12 @@ def context(workspace: Path, query: str = "", exclude_project: str = "") -> dict
         overlap = len(query_grams & grams(text))
         topics.append({**topic, "text_overlap": overlap})
     topics.sort(key=lambda item: (-item["text_overlap"], item["project"]))
-    return {"preferences": effective_preferences(entries), "topics": topics[:10],
+    profile_path = workspace / MEMORY_DIR / 'account-profile.md'
+    profile = {'status': 'missing', 'path': str(profile_path.relative_to(workspace))}
+    if profile_path.is_file():
+        content = profile_path.read_text(encoding='utf-8')
+        profile.update(status='available' if content.strip() else 'empty', content=content)
+    return {"account_profile": profile, "preferences": effective_preferences(entries), "topics": topics[:10],
             "note": "text_overlap 仅为字面重合数量，供人工检查重复主题、场景与动作；不代表语义相似度或传播效果。当前用户指令优先于历史偏好。"}
 
 

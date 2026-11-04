@@ -243,14 +243,14 @@ class SkillTest(unittest.TestCase):
             data["cards"].append({**data["cards"][1], "index": 3})
             data["aspect_ratio"] = "16:9"
             complete_project(root, data)
-            self.assertTrue(any("最终带字图未全部生成" in warning for warning in mod.inspect(root)[1]))
+            self.assertTrue(any("最终带字图未全部生成" in warning for warning in mod.inspect(root, check_images=True)[1]))
             for index in range(1, 4):
                 write_png(root / "图片" / f"{index:02d}.png", 16, 9)
             result = cli("quality_check", "--project", root)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
             self.assertIn("FAIL=0 WARN=0", result.stdout)
             (root / "图片/01.png").write_text("不是PNG", encoding="utf-8")
-            self.assertTrue(any("文件无效" in error for error in mod.inspect(root)[0]))
+            self.assertTrue(any("文件无效" in error for error in mod.inspect(root, check_images=True)[0]))
 
     def test_preference_priority_evidence_and_scope(self):
         mod = load_script("project_memory")

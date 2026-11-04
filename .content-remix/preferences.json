@@ -41,28 +41,36 @@
       "key": "image_provider_evaluation",
       "value": "直接生图优先评估 ddcherry-image；不适配时可以改造以供 content-remix 使用。此偏好不代表已授权付费试生成。",
       "evidence": "本次会话用户：4 直接生成图片可以看一下 ddcherry-image 这个skill，如果不满足条件，可以改造一下以适应这个skill生成图片。",
-      "scope": "workspace"
+      "scope": "workspace",
+      "status": "superseded",
+      "superseded_reason": "后续明确改为只交付提示词，不再使用生图API"
     },
     {
       "kind": "explicit",
       "key": "approved_visual_baseline",
       "value": "第三版首张图片/01.png的整体效果获用户认可；本项目后续图片沿用对应人物、底部文字与气泡风格，不继续擅自优化此样张。设定快照为.content-remix/cases/心疼老婆别只说多喝热水/snapshots/after-style-v3.json。",
       "evidence": "本次会话展示第三版后，用户原话：这一版，我是满意的。",
-      "scope": "project:wechat-posts/20261102-心疼老婆四句话"
+      "scope": "project:wechat-posts/20261102-心疼老婆四句话",
+      "status": "superseded",
+      "superseded_reason": "当前认可作品与暂用风格见account-profile.md及styles/current.json；原记录含已删除过程路径或过时归档描述"
     },
     {
       "kind": "explicit",
       "key": "approved_visual_baseline",
       "value": "当前风格暂时采用，以本项目创作资料/cards.json与图片/01.png～04.png为基准；第1张获明确满意认可，整组为暂用。过程文件已归档，旧.tmp/generated图片与快照路径不再作为现行引用。",
       "evidence": "本次会话用户：先暂时用这个图片风格吧。先清理历史文件吧。太多过程文件了。",
-      "scope": "project:wechat-posts/20261102-心疼老婆四句话"
+      "scope": "project:wechat-posts/20261102-心疼老婆四句话",
+      "status": "superseded",
+      "superseded_reason": "当前认可作品与暂用风格见account-profile.md及styles/current.json；原记录含已删除过程路径或过时归档描述"
     },
     {
       "kind": "explicit",
       "key": "image_generation_workflow",
       "value": "完整提示词包含全组图片，一次生成整组；不先试首张、不逐张生成或确认、不自动补图。接口多图能力需独立验证，不支持时不能回退逐张调用。",
       "evidence": "本次用户：不会逐张生成图片，统一一次生成多张图片。",
-      "scope": "workspace"
+      "scope": "workspace",
+      "status": "superseded",
+      "superseded_reason": "同范围同键已被后续明确记录替代"
     },
     {
       "kind": "explicit",
@@ -97,6 +105,20 @@
       "key": "image_review_workflow",
       "value": "默认交付完整创作提示词即结束，不要求或提醒回传图片，不审核图片，不将图片审核列为待办；只检查文本策划与提示词。仅以后用户另行明确要求时才审核图片。",
       "evidence": "用户：我一般情况下不会回传图片。也不需要你审核。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "title_strategy",
+      "value": "采用独立标题策划：工作标题与发布标题分开，正文后内部生成10～12候选、至少4种方法，检查点击理由和正文兑现，最终给3个推荐1个；取消20字硬限制，不自动改已发布标题。",
+      "evidence": "用户要求学习gzh-Skills标题方法，并对独立标题策划建议确认：按建议处理。",
+      "scope": "workspace"
+    },
+    {
+      "kind": "explicit",
+      "key": "target_audience",
+      "value": "本工作区公众号内容主要受众为宝妈。必须区分读者、叙述对象和代词；妻子爱丈夫的表现可以面向妻子自我对照，不自动判男性受众；宝妈身份不等于每篇都要写孩子或母职。",
+      "evidence": "用户：受众是宝妈。随后指出应看对标写法，并要求修正；撤回男性受众和强加当妈以后方向。",
       "scope": "workspace"
     }
   ]
