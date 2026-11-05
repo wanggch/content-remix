@@ -1,0 +1,13 @@
+{
+  "stage": "titles",
+  "requested_model": "gemini-3.8-flash-high",
+  "actual_model": "未由CLI元数据核实",
+  "started_at": "2026-11-05T08:36:06.350664+00:00",
+  "status": "failed",
+  "input_sha256": {
+    ".content-remix/account-profile.md": "74fa878445674885c1db85f8e56549e862329c524c329b41926ff9a248498885",
+    "对标资料/老婆爱老公的6大表现/对标分析.md": "59fed97823a37d4e5ac72b3bc4e26927efc94976cd3dfdea105ce87fa0190459",
+    "对标资料/老婆爱老公的6大表现/标题方案.md": "d71047aa53315499b201116346cb02da8b787b23d7ef418975a5148c50409406"
+  },
+  "error": "agy复核超时，未完成，不能视为通过"
+}

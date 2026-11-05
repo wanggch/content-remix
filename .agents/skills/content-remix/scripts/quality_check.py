@@ -8,10 +8,10 @@ import struct
 import sys
 from pathlib import Path
 
-from project_paths import resolve
+from project_paths import resolve, source_root
 from build_prompt import BATCH_PATH, CONTRACT_PATH, DIMENSIONS, load_project, render_batch, render_contract
 
-REQUIRED = ["对标素材/source.md", "创作资料/对标分析.md", "创作资料/选题与分镜.md",
+REQUIRED = [ "创作资料/选题与分镜.md",
             "发布文案.md", "记录/审核.md", "创作资料/cards.json", str(CONTRACT_PATH), str(BATCH_PATH)]
 
 
@@ -34,6 +34,15 @@ def inspect(root: Path, *, check_images: bool = False) -> tuple[list[str], list[
         path = resolve(root, name)
         if not path.is_file() or not path.stat().st_size:
             errors.append(f"缺少或为空：{name}")
+    try:
+        material = source_root(root)
+        if not (material / 'source.md').is_file() or not (material / 'source.md').stat().st_size:
+            errors.append('缺少或为空：对标素材/source.md（含共享引用）')
+        if not (root / '创作资料/对标引用.json').exists() and not (root / '创作资料/对标分析.md').is_file():
+            errors.append('缺少：创作资料/对标分析.md')
+    except (OSError, ValueError) as exc:
+        errors.append(f'对标引用不可用：{exc}')
+        material = root / '对标素材'
     data = None
     try:
         data = load_project(root)
@@ -74,7 +83,7 @@ def inspect(root: Path, *, check_images: bool = False) -> tuple[list[str], list[
         if final < len(cards):
             warnings.append("最终带字图未全部生成；不可宣称公众号配图成品已完成")
     try:
-        source = json.loads(resolve(root, "对标素材/source.json").read_text(encoding="utf-8"))
+        source = json.loads((material / "source.json").read_text(encoding="utf-8"))
         if not isinstance(source, dict) or source.get("status") != "ok":
             warnings.append("源文素材不完整或需人工图像阅读")
     except (OSError, ValueError):

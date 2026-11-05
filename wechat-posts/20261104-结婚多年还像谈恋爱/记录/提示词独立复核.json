@@ -1,0 +1,15 @@
+{
+  "stage": "prompt",
+  "requested_model": "gemini-3.8-flash-high",
+  "actual_model": "未由CLI元数据核实",
+  "started_at": "2026-11-05T08:36:06.350659+00:00",
+  "status": "review_returned",
+  "input_sha256": {
+    ".content-remix/account-profile.md": "74fa878445674885c1db85f8e56549e862329c524c329b41926ff9a248498885",
+    "wechat-posts/20261104-结婚多年还像谈恋爱/创作资料/大纲.md": "f0d7df1be620cb03800d58f58251c9a2473aff45e54eb40acb37ae83262334a3",
+    "wechat-posts/20261104-结婚多年还像谈恋爱/创作资料/cards.json": "d8718ae9f2250b2b2a66a51feb610128998f8d7bce771d1593c36f1ccec9a990",
+    "wechat-posts/20261104-结婚多年还像谈恋爱/创作提示词.md": "1829e24a0be975d94345736a13c8a033721057d4d3bd27a79c895bb285ca634d"
+  },
+  "returncode": 0,
+  "disposition": "待主创逐项处理，不代表通过"
+}

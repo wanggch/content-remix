@@ -34,7 +34,7 @@
     "text_layers": {
       "source": "短气泡＋卡通场景＋五六行解释",
       "target": "短气泡＋简笔场景＋六行解释",
-      "evidence": "对标素材/images/01.png、03.png、04.png"
+      "evidence": "对标引用.json所指共享目录的对标素材/images/01.png、03.png、04.png"
     },
     "caption_length": {
       "source": "短话术与完整生活解释，约五六行",

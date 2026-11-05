@@ -63,29 +63,29 @@
     "structure": {
       "source": "parallel",
       "target": "parallel",
-      "evidence": "创作资料/对标分析.md逐图记录：原文6张图各为独立沟通建议"
+      "evidence": "创作资料/选题承接.md逐图记录：原文6张图各为独立沟通建议"
     },
     "text_layers": {
       "source": "短气泡＋卡通画面＋底部长解释",
       "target": "短气泡＋卡通画面＋底部六行解释",
-      "evidence": "创作资料/对标分析.md对原图上下文字区的实际读取记录"
+      "evidence": "创作资料/选题承接.md对原图上下文字区的实际读取记录"
     },
     "caption_length": {
       "source": "短话术与完整生活解释，非两行标语",
       "target": "完整文案约80—110字符",
-      "evidence": "创作资料/对标分析.md文字层级记录；本项目已完成caption实际长度",
+      "evidence": "创作资料/选题承接.md文字层级记录；本项目已完成caption实际长度",
       "min_chars": 80,
       "max_chars": 110
     },
     "tone": {
       "source": "口语话术、第二人称与具体例子",
       "target": "口语话术与生活解释，避免性别定论及效果承诺",
-      "evidence": "创作资料/对标分析.md原文语言与可信度分析"
+      "evidence": "创作资料/选题承接.md原文语言与可信度分析"
     },
     "visual": {
       "source": "白底家庭卡通、黑色轮廓、柔和色块、上下文案",
       "target": "保留简笔点眼人物、全身景别、小气泡、稀疏道具与细手写解释的通用形式；使用独立角色与育儿行动场景",
-      "evidence": "对标素材/images/01.png与03.png实际视觉对照；用户本次反馈当前生成图与对标差异较高，按visual-calibration.md校准"
+      "evidence": "对标引用.json所指共享目录的对标素材/images/01.png与03.png实际视觉对照；用户本次反馈当前生成图与对标差异较高，按visual-calibration.md校准"
     }
   }
 }
