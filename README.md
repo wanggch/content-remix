@@ -10,7 +10,7 @@ python3 -m venv .venv
 bash install.sh all --force
 ```
 
-安装副本位于项目`.agents/skills/content-remix`和`.claude/skills/content-remix`，修改源文件后同步，重新开会话加载。个人作品、偏好和风格不打包进安装副本。Pillow用于实际生图后的解码及白底处理，离线提示词生成只需Python标准库。
+安装副本位于项目`.agents/skills/content-remix`（Codex与agy共用）和`.claude/skills/content-remix`。可用`bash install.sh agy --force`仅安装共享副本；`all`只安装共享目录一次，不创建`.agent/`，不写全局目录。修改源文件后同步，重新开会话加载。个人作品、偏好和风格不打包进安装副本。Pillow用于实际生图后的解码及白底处理，离线提示词生成只需Python标准库。
 
 ## 项目结构
 

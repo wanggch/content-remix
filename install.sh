@@ -7,8 +7,8 @@ PROJECT_DIR="$(pwd)"
 MODE="${1:-all}"
 FORCE="${2:-}"
 
-if [[ "$MODE" != "all" && "$MODE" != "claude" && "$MODE" != "codex" ]]; then
-  echo "Usage: bash install.sh [all|claude|codex] [--force]" >&2
+if [[ "$MODE" != "all" && "$MODE" != "claude" && "$MODE" != "codex" && "$MODE" != "agy" ]]; then
+  echo "Usage: bash install.sh [all|claude|codex|agy] [--force]" >&2
   exit 2
 fi
 
@@ -35,8 +35,9 @@ install_one() {
 if [[ "$MODE" == "all" || "$MODE" == "claude" ]]; then
   install_one "Claude Code" "$PROJECT_DIR/.claude/skills/content-remix"
 fi
-if [[ "$MODE" == "all" || "$MODE" == "codex" ]]; then
-  install_one "Codex" "$PROJECT_DIR/.agents/skills/content-remix"
+if [[ "$MODE" == "all" || "$MODE" == "codex" || "$MODE" == "agy" ]]; then
+  # Codex 与 agy 共用项目级目录；all 只安装一次，避免同名副本。
+  install_one "Codex / agy" "$PROJECT_DIR/.agents/skills/content-remix"
 fi
 
-echo "Done. Start a new Claude Code / Codex session and invoke the skill."
+echo "Done. Start a new Claude Code / Codex / agy session and invoke the skill."
